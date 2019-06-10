@@ -1,0 +1,90 @@
+#include "include/dmutil.h"
+#include "include/win.h"
+#include "include/win_panel.h"
+#include "include/PmMgeTags.h"
+#include "include/pm.h"
+#include "include/pm_core_tags.h"
+#include "include/array.mac"
+#include "include/geoutils.h"
+#include "include/cos.h"
+#include "include/dm_cos_schema.h"
+#include "include/quants.h"
+#include "include/pm_errors.h"
+
+#include "$GreenTec/Include/license.h"
+
+main()
+{
+    if(!license()){
+        return(0);
+    }
+    x0 = 0;
+    y0 = 0;
+    z0 = 0;
+    PM_GET_CURRENT_LOC(x0,y0,z0);   
+    /* step1 - select standard component that you want to replace */
+    nth = 0;
+    part = PM_PICK_OBJECT("请选择要替换的零件",nth,"STANDCMP");
+    if(ISINT(part)){
+        return(0);
+    }    
+    /* step2 - get part id of selected part */
+    part_id = PM_GET_OBJDATA(part,nth,MMT_TAG_PARTID);
+    if(ISINT(part_id)){
+        U_CONFIRM("无法获取选择的零件的PART ID");
+        return(0);
+    }
+    /* step3 - get part code of selected part */
+    part_code = STRINGTERM(part_id,"-");
+    if(part_code == ""){
+        U_CONFIRM("无法或者选择的零件的part code");
+        return(0);        
+    }    
+    /* step4 - let user select new component that used to replace the origin one */
+	selectmask = DM_INIT_TAGREC();
+	part_id_new = DM_BROWSE_PARTCODE(part_code, 1, selectmask);
+	if(!ISSTRING(part_id_new)){
+        return(0);
+	}
+    else if(part_id == part_id_new){        /* if selected component is same as origin one, let user reselect a new one*/
+        flag = 1;
+        while(flag){
+            U_CONFIRM("选择的零件与原零件相同,请重新选择");
+            part_id_new = DM_BROWSE_PARTCODE(part_code, 1, selectmask);
+            if(!ISSTRING(part_id_new)){
+                return(0);
+            }
+            else if(part_id != part_id_new){
+                flag = 0;            
+            }        
+        }         
+    }
+	/* step5 - use selected component to replace old one */
+    st = PM_UM_OPEN_CHANGE("替换零件："+part_id);
+    rec = DM_INIT_TAGREC();
+    DM_SET_TAGVAL(rec, MMT_TAG_PARTID, part_id_new);
+    invalid_tag = "";
+    res = PM_SET_OBJECT(part,rec,invalid_tag);
+    if(res != 0){
+        if(res == MMT_E_OI_INVALID_DATA){
+            U_CONFIRM("选择的零件包含无效的数据");         
+        }
+        else if(res == MMT_E_OI_INVALID_REFERENCE_DATA){
+            U_CONFIRM("选择的零件包含无效的参考对象");                
+        }
+        else if(res == MMT_E_OI_NO_MODIFY_ACCESS){
+            U_CONFIRM("你没有修改这个零件的权限");                
+        }    
+        else if(res == MMT_E_OI_INVALID_GEOMETRY){
+            U_CONFIRM("选择的零件的几何外形无效");                
+        }    
+        else if(res == MMT_E_OI_UNSUPPORTED_OBJECT_TYPE){
+            U_CONFIRM("不支持选择的零件的类型");               
+        }
+        else{
+            U_CONFIRM("选择的零件的下列属性值无效：" + invalid_tag);             
+        }
+    }
+    st = PM_UM_CLOSE_CHANGE();
+    return(0);
+}

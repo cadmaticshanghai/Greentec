@@ -1,0 +1,360 @@
+#include "include/dmutil.h"
+#include "include/win.h"
+#include "include/win_panel.h"
+#include "include/PmMgeTags.h"
+#include "include/pm.h"
+#include "include/pm_core_tags.h"
+#include "include/array.mac"
+#include "include/cos.h"
+#include "include/geoutils.h"
+#include "include/quants.h"
+#include "include/dm_cos_schema.h"
+main()
+{
+	prompt = "请选择要自动添加管支架的视图";
+	view_name = "";
+	SelectViewNameFromActiveDrawing(prompt,view_name);
+	
+	if(!ISSTRING(view_name)){
+		return(0);	
+	}
+	else{
+		is_in_drawing = 1;
+		view_h = GetViewHandle(view_name, is_in_drawing);
+		models = ViewScan(view_h);
+		model_number = PM_NR_MEMBERS_IN_SET(models);
+		support_model = PM_INIT_SET();
+		for(i=0;i<model_number;i=i+1;){
+			model = PM_GET_MEMBER_IN_SET(models,i);
+			nth = 0;
+			type = PM_GET_OBJDATA(model, nth, MMT_TAG_OBJTYPE);
+			if(type == "2"){
+				primary_h = PM_GET_OBJECT_GROUP(model,10);
+				support_h = PM_GET_OBJECT_GROUP(primary_h,9);
+				if (!ISINT(support_h)){
+					support = PM_GET_OBJECTS_IN_GROUP(support_h,1);
+					part_number = PM_NR_MEMBERS_IN_SET(support);
+					if(part_number > 0){
+						PM_SETOP_OR(support_model,support);												
+					}
+				}			
+			}		
+		}
+		res = PM_REVISUALIZE_SET_TO_VIEW(support_model,view_h);
+		PM_SETOP_OR(models,support_model);		
+		PM_FREE_SET(support_model);
+		
+		
+		
+		
+		
+		
+	}
+}
+
+
+
+/*
+	User can select one view from active drawing.
+	
+	Input arguments:
+						string	prompt		Prompt issued
+	Output arguments:
+						string	view_name	Name of the view selected
+	return values:
+						int		0			success
+						int		-1			failure
+*/
+SelectViewNameFromActiveDrawing(string prompt, string view_name)
+{
+	if(PM_GET_ACTIVE_DRW_NAME() == ""){
+		messa = "Activate Drawing before this command !";
+		U_MESSAGEBOX(messa, U_MB_WARNING, U_MB_OK, U_OK);
+		return(-1);
+	}
+
+	view_name = "";
+	nr_of_views = 0;
+	next = 0;
+	vain = 0.0;
+	continue = TRUE;
+	while(continue){
+		v_name = PM_GET_NEXT_VIEW_ON_PAGE(next ,vain, vain, vain,
+						vain, vain, vain, vain, vain, vain, vain, vain);
+		if(ISINT(v_name))continue = FALSE;
+		else nr_of_views = nr_of_views + 1;
+	}
+	
+	if( nr_of_views == 0 ){
+		messa = "No views assigned to the active drawing !";
+		U_MESSAGEBOX(messa, U_MB_ERROR, U_MB_OK, U_OK);
+		return(-1);
+	}
+	
+	view_names = A_ALLOC(nr_of_views, "STRING");
+	selected = A_ALLOC(nr_of_views, "INT");
+	
+	nr_of_views = 0;
+	next = 0;
+	continue = TRUE;
+	while(continue){
+		v_name = PM_GET_NEXT_VIEW_ON_PAGE(next ,vain, vain, vain,
+						vain, vain, vain, vain, vain, vain, vain, vain);
+		if(ISINT(v_name))continue = FALSE;
+		else{
+			A_PUT(view_names, nr_of_views, v_name);
+			nr_of_views = nr_of_views + 1;
+		}
+	}
+	
+	r = U_SELECT_TOOL(prompt, view_names, selected, nr_of_views, 1);
+
+	if(r != 0) return(-1);
+	for(i = 0; i < nr_of_views; i = i + 1;){
+		sel = A_GET(selected, i);
+		if(sel){
+			view_name = A_GET(view_names, i);
+			i = nr_of_views;
+		}
+	}
+	A_FREE(view_names);
+	A_FREE(selected);
+	
+	if(view_name == "") return(-1);
+	else return(0);
+}
+
+/*
+	This function use to get the list of model objects that can be seen in the specified view.
+	
+	input arguments:
+	name:           type:           description:
+	view_h          handle          handle of view
+		
+	output arguments:
+	name:           type:           description:
+	
+	return value
+	type            value           desciption
+	handle          model set       set of model objects that can be seen in view
+*/
+ViewScan(handle view_h)
+{
+	/* Get Bounding Box of view and convert coordinates to model coordinates */
+	xmin = 0.0; xmax = 0.0; 
+	ymin = 0.0; ymax = 0.0;
+	zmin = 0.0; zmax = 0.0;
+	
+	umin = 0.0; umax = 0.0; 
+	vmin = 0.0; vmax = 0.0;
+	wmin = 0.0; wmax = 0.0;
+	PM_GET_VIEW_PARAMETERS(view_h, 	"BBOX", umin, umax, vmin, vmax, wmin, wmax);
+	
+	/* create 3 box which covers view 2D box */
+	xmin1 = umin;	ymin1 = vmin;	zmin1 = wmin;
+	PM_VIEW_TRANSFORMATION(view_h, 0, xmin1, ymin1, zmin1);
+	xmin = xmin1;	ymin = ymin1;	zmin = zmin1;
+	
+	xmin1 = umin;	ymin1 = vmin;	zmin1 = wmax;
+	PM_VIEW_TRANSFORMATION(view_h, 0, xmin1, ymin1, zmin1);
+	if(xmin1 < xmin) xmin = xmin1;
+	if(ymin1 < ymin) ymin = ymin1;
+	if(zmin1 < zmin) zmin = zmin1;
+	
+	xmin1 = umin;	ymin1 = vmax;	zmin1 = wmin;
+	PM_VIEW_TRANSFORMATION(view_h, 0, xmin1, ymin1, zmin1);
+	if(xmin1 < xmin) xmin = xmin1;
+	if(ymin1 < ymin) ymin = ymin1;
+	if(zmin1 < zmin) zmin = zmin1;
+	
+	xmin1 = umin;	ymin1 = vmax;	zmin1 = wmax;
+	PM_VIEW_TRANSFORMATION(view_h, 0, xmin1, ymin1, zmin1);
+	if(xmin1 < xmin) xmin = xmin1;
+	if(ymin1 < ymin) ymin = ymin1;
+	if(zmin1 < zmin) zmin = zmin1;
+	
+	xmin1 = umax;	ymin1 = vmin;	zmin1 = wmin;
+	PM_VIEW_TRANSFORMATION(view_h, 0, xmin1, ymin1, zmin1);
+	if(xmin1 < xmin) xmin = xmin1;
+	if(ymin1 < ymin) ymin = ymin1;
+	if(zmin1 < zmin) zmin = zmin1;
+	
+	xmin1 = umax;	ymin1 = vmin;	zmin1 = wmax;
+	PM_VIEW_TRANSFORMATION(view_h, 0, xmin1, ymin1, zmin1);
+	if(xmin1 < xmin) xmin = xmin1;
+	if(ymin1 < ymin) ymin = ymin1;
+	if(zmin1 < zmin) zmin = zmin1;
+	
+	xmin1 = umax;	ymin1 = vmax;	zmin1 = wmin;
+	PM_VIEW_TRANSFORMATION(view_h, 0, xmin1, ymin1, zmin1);
+	if(xmin1 < xmin) xmin = xmin1;
+	if(ymin1 < ymin) ymin = ymin1;
+	if(zmin1 < zmin) zmin = zmin1;
+	
+	xmin1 = umax;	ymin1 = vmax;	zmin1 = wmax;
+	PM_VIEW_TRANSFORMATION(view_h, 0, xmin1, ymin1, zmin1);
+	if(xmin1 < xmin) xmin = xmin1;
+	if(ymin1 < ymin) ymin = ymin1;
+	if(zmin1 < zmin) zmin = zmin1;
+	
+	xmax1 = umin;	ymax1 = vmin;	zmax1 = wmin;
+	PM_VIEW_TRANSFORMATION(view_h, 0, xmax1, ymax1, zmax1);
+	xmax = xmax1;	ymax = ymax1;	zmax = zmax1;
+	
+	xmax1 = umin;	ymax1 = vmin;	zmax1 = wmax;
+	PM_VIEW_TRANSFORMATION(view_h, 0, xmax1, ymax1, zmax1);
+	if(xmax1 > xmax) xmax = xmax1;
+	if(ymax1 > ymax) ymax = ymax1;
+	if(zmax1 > zmax) zmax = zmax1;
+	
+	xmax1 = umin;	ymax1 = vmax;	zmax1 = wmin;
+	PM_VIEW_TRANSFORMATION(view_h, 0, xmax1, ymax1, zmax1);
+	if(xmax1 > xmax) xmax = xmax1;
+	if(ymax1 > ymax) ymax = ymax1;
+	if(zmax1 > zmax) zmax = zmax1;
+	
+	xmax1 = umin;	ymax1 = vmax;	zmax1 = wmax;
+	PM_VIEW_TRANSFORMATION(view_h, 0, xmax1, ymax1, zmax1);
+	if(xmax1 > xmax) xmax = xmax1;
+	if(ymax1 > ymax) ymax = ymax1;
+	if(zmax1 > zmax) zmax = zmax1;
+	
+	xmax1 = umax;	ymax1 = vmin;	zmax1 = wmin;
+	PM_VIEW_TRANSFORMATION(view_h, 0, xmax1, ymax1, zmax1);
+	if(xmax1 > xmax) xmax = xmax1;
+	if(ymax1 > ymax) ymax = ymax1;
+	if(zmax1 > zmax) zmax = zmax1;
+	
+	xmax1 = umax;	ymax1 = vmin;	zmax1 = wmax;
+	PM_VIEW_TRANSFORMATION(view_h, 0, xmax1, ymax1, zmax1);
+	if(xmax1 > xmax) xmax = xmax1;
+	if(ymax1 > ymax) ymax = ymax1;
+	if(zmax1 > zmax) zmax = zmax1;
+	
+	xmax1 = umax;	ymax1 = vmax;	zmax1 = wmin;
+	PM_VIEW_TRANSFORMATION(view_h, 0, xmax1, ymax1, zmax1);
+	if(xmax1 > xmax) xmax = xmax1;
+	if(ymax1 > ymax) ymax = ymax1;
+	if(zmax1 > zmax) zmax = zmax1;
+	
+	xmax1 = umax;	ymax1 = vmax;	zmax1 = wmax;
+	PM_VIEW_TRANSFORMATION(view_h, 0, xmax1, ymax1, zmax1);
+	if(xmax1 > xmax) xmax = xmax1;
+	if(ymax1 > ymax) ymax = ymax1;
+	if(zmax1 > zmax) zmax = zmax1;
+	
+	set = PM_OBJECTS_IN_BOX(1, xmin, ymin, zmin, xmax, ymax, zmax); 
+	
+	/* filter objects which are not visualized in view */
+	nr_mem = PM_NR_MEMBERS_IN_SET(set);
+	trash_set = PM_INIT_SET();
+	dum = 0.0;
+	for(i = 0; i < nr_mem; i = i + 1;){
+		obj = PM_GET_MEMBER_IN_SET(set, i);
+		if(ObjectVisualizedInView(obj, view_h, 1))
+			PM_ADD_OBJECT_TO_SET(obj, trash_set);
+	}	
+	return(trash_set);   
+}
+
+/*
+	This function use to judge specified object can be seen in the specified view of not.
+	
+	input arguments:
+	name:           type:           description:
+	obj             handle          handle of model object
+	view_h          handle          handle of view
+	visibleonly     int             visualized status
+		
+	output arguments:
+	name:           type:           description:
+	
+	return value
+	type            value           desciption
+	Logical         FALSE/TRUE      The specified model can't/can be seen in specified view (base on value of visibleonly)
+		
+*/
+ObjectVisualizedInView(handle obj, handle view_h, int visibleonly)
+{
+	dum = 0.0;
+	st = PM_GET_BBOX_OF_OBJECT_IN_VIEW(obj, view_h, dum, dum, dum, dum, dum, dum);
+	if(st != 0) return(FALSE);
+	
+	if(visibleonly){
+		if(PM_MEASURE_OBJECT_VISIBILITY_IN_VIEW(obj, 0, view_h) < 0.1){
+			return(FALSE);
+		}
+	}	
+	return(TRUE);
+}
+
+/*
+	This function use to get the list of equipment that can be seen in the specified view.
+	
+	input arguments:
+	name:           type:           description:
+	view_h          handle          handle of view
+		
+	output arguments:
+	name:           type:           description:
+	equipments      handle          use to receive set of equipments
+	
+	return value
+	type            value           desciption
+	int             0               success
+	int             -1              fail	
+*/
+EquipmentsInView(handle view_h, handle equipments)
+{
+    model_objects = ViewScan(view_h);
+    PM_FILTER_SET(model_objects, "STRUCTCMP", "PIPE", "STANDCMP", "AIRDUCT", "BEAM", "CABLETRAY","GROUP","ATTRIBUTE","3DSPACE"); 
+    PM_SETOP_XOR(equipments);
+    res = PM_SETOP_OR(equipments,model_objects);
+    return(res);
+}
+
+/*
+	This function use to get the list of pipe that can be seen in the specified view.
+	
+	input arguments:
+	name:           type:           description:
+	view_h          handle          handle of view
+		
+	output arguments:
+	name:           type:           description:
+	pipes           handle          use to receive set of pipes
+	
+	return value
+	type            value           desciption
+	int             0               success
+	int             -1              fail	
+*/
+PipesInView(handle view_h, handle pipes)
+{
+    model_objects = ViewScan(view_h);
+    PM_FILTER_SET(model_objects, "STRUCTCMP", "EQUIPMENT", "STANDCMP", "AIRDUCT", "BEAM", "CABLETRAY","GROUP","ATTRIBUTE","3DSPACE"); 
+    PM_SETOP_XOR(pipes);
+    res = PM_SETOP_OR(pipes,model_objects);
+    return(res);
+}
+
+/*
+	Get view handle of closed or open view. Open view if it is closed.
+	
+	input arguments:
+						string	view_name		= name of the view
+						int		is_in_drawing	= 0 for working views
+												= 1 for drawing views
+	return values:
+						success:	handle of opened view
+						failure:	int -1
+*/						
+GetViewHandle(string view_name, int is_in_drawing)
+{
+	view_h = PM_GET_HANDLE_OF_OPENED_VIEW(view_name, is_in_drawing);
+	if(ISINT(view_h)){
+		view_h = PM_OPEN_VIEW(view_name, is_in_drawing, "", "");
+		if(ISINT(view_h)) return(-1);
+	}
+	return(view_h);
+}
