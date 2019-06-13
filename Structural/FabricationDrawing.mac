@@ -36,6 +36,7 @@
 #include "$GreenTec/Include/String_Utility.h"
 #include "$GreenTec/Include/Math_Utility.h"
 #include "$GreenTec/Include/Drawing_Utility.h"
+#include "$GreenTec/Include/Structural_Utility.h"
 #include "$GreenTec/Include/license.h"
 
 global   handle	Block_Name,Planning_Unit,Pro_Number,Dra_Number,Start_Page;
@@ -75,6 +76,15 @@ global   float		Support_Weight = 0.0;
 global   string	PS_DrawingNo = "";
 global   int		Debug = 1; 
 global	int		Part_Label_Mode = 1;
+
+
+global string   Icon_My_Check_Out =         "$GreenTec/ICONS/mycheckout.ico";
+global string   Icon_Other_Check_Out =      "$GreenTec/ICONS/checkout.ico";
+global string   Icon_Local_Server =         "$GreenTec/ICONS/local_server.ico";
+global string   Icon_Replica_Check_Out =    "$GreenTec/ICONS/replica_checkout.ico";
+global string   Icon_Replica_Server =       "$GreenTec/ICONS/replica.ico";
+global string   Icon_Error =                "$GreenTec/ICONS/error.ico";
+global handle   Access_List;                /*用于保存模型权限状态的数组*/
 
 /*定义主窗口的列数*/
 #define  Column_Number 8
@@ -119,6 +129,7 @@ init()
 	put_2darray(View_Positions,3,0,View4_X);
 	put_2darray(View_Positions,3,1,View4_Y);
 	Model_Set = PM_INIT_SET();
+    Access_List = A_ALLOC(1);
 }
 
 set_default()
@@ -195,6 +206,8 @@ get_model_info()
 	/* define array for information of model groups */
 	A_FREE(Object_Info);
 	Object_Info = alloc_2darray(Object_Number,Column_Number);
+	A_FREE(Access_List);
+	Access_List = A_ALLOC(Object_Number);    
 	/* get information of model groups and save in array */	
 	for (i = 0; i < Object_Number; i = i + 1;){		
 		object_handle = PM_GET_MEMBER_IN_SET(Object_List, i);	
@@ -249,6 +262,8 @@ get_model_info()
 		   put_2darray(Object_Info,i,4,"未生成");
 		   put_2darray(Object_Info,i,5,"0000-00-00");
 		}
+        access = Get_Object_Access_Status(object_handle);
+		A_PUT(Access_List,i,access);
 	}	
 	return 0;
 }
@@ -265,6 +280,28 @@ publish_model_info()
 	for (i = 0; i < Object_Number; i = i + 1;){
 		W_SET_WINDOW_ARGS(DisplayGrid, W_LISTW_ROW, 0);
 		W_SET_WINDOW_ARGS(DisplayGrid, W_LISTW_INSERTROWS, 1);
+		/*set access status flag of group*/
+		flag = A_GET(Access_List,i);
+		icon = Icon_My_Check_Out;
+		if(flag == "Local"){
+		   icon = Icon_Local_Server;
+		}
+		else if(flag == "CheckOutByMe"){
+		   icon = Icon_My_Check_Out;
+		}
+		else if(flag == "CheckOutByOther"){
+		   icon = Icon_Other_Check_Out;
+		}
+		else if(flag == "Replica"){
+		   icon = Icon_Replica_Server;
+		}
+		else if(flag == "CheckOutByReplicaUser"){
+		   icon = Icon_Replica_Check_Out;
+		}
+		else{
+		   icon = Icon_Error;
+		} 
+        W_SET_WINDOW_ARGS(DisplayGrid, W_LISTW_ROW, 0, W_LISTW_COLUMN, 0, W_LISTW_ICON, icon );        
 		for ( j = 0; j < Column_Number; j = j + 1;){
 			Value = get_2darray(Object_Info,i,j);
 			if (ISSTRING(Value)){
@@ -291,7 +328,8 @@ publish_model_info()
 create_top_frame()
 {
 	mainform = W_INIT_FRAME();
-	W_REALIZE_WINDOW(mainform,  W_FRAME_TITLE, "舾装件基座制造图生成工具" );	
+	W_REALIZE_WINDOW(mainform,  W_FRAME_TITLE, "舾装件基座制造图生成工具",
+                                W_FRAME_RESIZABLE,  W_RESIZE_HORIZONTALLY);
 	return(mainform);
 }
 
@@ -307,8 +345,9 @@ create_grid(main_form)
 							W_LISTW_COLUMNS,     	Column_Number,
 							W_FRAME_SCROLLBAR,   	W_SCROLLBAR_RIGHTEDGE,
 							W_LISTW_HEADER_MODE, 	W_LISTW_HEADER_BUTTONS,
+                            W_FRAME_RESIZABLE,      W_RESIZE_HORIZONTALLY,
 							W_LISTW_MODE_REPORT, 	0,
-							W_FRAME_COLS,        	60, 
+							W_FRAME_COLS,        	75, 
 							W_FRAME_ROWS,        	17,
 							W_LISTW_CALLBACK,    	1);
 						   
@@ -829,15 +868,102 @@ create_panel_upperpart(mainform)
 											W_PANEL_ORDINALVALUE,   1,
 											W_PANEL_CHOICESTYLE,	   W_STYLE_PUSHBUTTONS,
 											W_PANEL_CALLBACK,       1);
-									
+
+	CheckIn = W_ADD_PANELITEM(panel_upperpart, W_PANEL_BUTTON, "CheckIn");
+	W_REALIZE_PANELITEM(CheckIn,	W_PANEL_ROW, 	         4, 
+                                    W_PANEL_COL,            52,
+                                    W_PANEL_BUTTONIMAGE,    "CheckIn",
+                                    W_PANEL_WIDTH,          10,
+                                    W_PANEL_BUTTONVALUE,    210,
+                                    W_PANEL_CALLBACK,       1,
+                                    W_PANEL_LAYOUT,         W_LAYOUT_HORIZONTAL);
+
+	CheckOut = W_ADD_PANELITEM(panel_upperpart, W_PANEL_BUTTON, "CheckOut");
+	W_REALIZE_PANELITEM(CheckOut,	W_PANEL_ROW, 	         4, 
+                                    W_PANEL_COL,            63,
+                                    W_PANEL_BUTTONIMAGE,    "CheckOut",
+                                    W_PANEL_WIDTH,          10,
+                                    W_PANEL_BUTTONVALUE,    210,
+                                    W_PANEL_CALLBACK,       1,
+                                    W_PANEL_LAYOUT,         W_LAYOUT_HORIZONTAL);
+                                    
 	W_SET_PANELITEM_HANDLER(search_stru, "search_objects");
 	W_SET_PANELITEM_HANDLER(pick_stru, "pick_objects");
 	W_SET_PANELITEM_HANDLER(element_add_flag, "model_list_mode");
 	W_SET_PANELITEM_HANDLER(Options, "options_selected");
 	W_SET_PANELITEM_HANDLER(Part_Label_Flag, "part_label_mode");
+    W_SET_PANELITEM_HANDLER(CheckIn, "checkin_model_handler");
+    W_SET_PANELITEM_HANDLER(CheckOut, "checkout_model_handler");
 	
 	return(panel_upperpart);
 }
+
+checkout_model_handler(item, event_type, button_value)
+{
+	/* check if select model groups in grid */
+	models_number = PM_NR_MEMBERS_IN_SET(Selected_Objects);	
+	if (models_number <= 0){
+		model_h = Pick_Structural_Group("请选择要Checkout的舾装件");
+        if(!ISINT(model_h)){
+            res = CheckOut_Group_With_Members(model_h);
+            if(res>0){
+                reset_access_status(model_h,"CheckOut");
+            }
+        }
+	}
+    else{
+        for(i=0;i<models_number;i=i+1;){	   
+            model_h = PM_GET_MEMBER_IN_SET(Selected_Objects, i);	
+            res = CheckOut_Group_With_Members(model_h);
+            reset_access_status(model_h,"CheckOut");            
+        } 
+    }        
+}
+
+checkin_model_handler(item, event_type, button_value)
+{
+	/* check if select model groups in grid */
+	models_number = PM_NR_MEMBERS_IN_SET(Selected_Objects);
+	
+	if (models_number <= 0){
+		model_h = Pick_Structural_Group("请选择要Checkin的舾装件");
+        if(!ISINT(model_h)){
+            res = CheckIn_Group_With_Members(model_h);
+            if(res>0){
+                reset_access_status(model_h,"CheckIn");
+            }
+        }
+	}
+    else{
+        for(i=0;i<models_number;i=i+1;){	   
+            model_h = PM_GET_MEMBER_IN_SET(Selected_Objects, i);	
+            res = CheckIn_Group_With_Members(model_h); 
+            reset_access_status(model_h,"CheckIn");
+        }     
+    }  
+}
+
+reset_access_status(model_h,flag)
+{
+    id = find_model_grid_id(model_h);
+    if(id != -1){
+        W_SET_WINDOW_ARGS(DisplayGrid,W_LISTW_FINDID,id);
+        row = W_GET_WINDOW_ARG(DisplayGrid,W_LISTW_ROW);
+		/*set access status flag of group*/
+		if(flag == "CheckIn"){
+		   icon = Icon_Local_Server;
+		}
+		else if(flag == "CheckOut"){
+		   icon = Icon_My_Check_Out;
+		}
+		else{
+		   icon = Icon_Error;
+		} 
+        W_SET_WINDOW_ARGS(DisplayGrid, W_LISTW_ROW, row, W_LISTW_COLUMN, 0, W_LISTW_ICON, icon );                 
+    }
+    return(0);
+}
+
 
 create_command(mainform)
 {	
@@ -1446,7 +1572,7 @@ create_drawing_handler(item, event_type, button_value)
 	models_number = PM_NR_MEMBERS_IN_SET(Selected_Objects);
 	
 	if (models_number <= 0){
-		U_CONFIRM("请先选择基座");
+		U_CONFIRM("请先选择舾装件");
 		return(0);
 	}
 			
@@ -1455,26 +1581,47 @@ create_drawing_handler(item, event_type, button_value)
 	PM_GET_CURRENT_LOC(x0,y0,z0);
 	start_time = GET_TIME(); 
 	for(i=0;i<models_number;i=i+1;){	   
-	   Model_Handle = PM_GET_MEMBER_IN_SET(Selected_Objects, i);	
-	   Model_Set = PM_GET_OBJECTS_IN_GROUP(Model_Handle);	  	   
-	   process_info = ITOASCII(i+1) + "/" + ITOASCII(models_number);
-	   W_SET_PANELITEM_ARGS(Process, W_PANEL_VALUE, process_info);
-	   model_name = PM_GET_OBJDATA(Model_Handle,0,MMT_TAG_OBJNAME);
-	   drawing_info = "正在处理管基座：" + model_name;
-	   W_SET_PANELITEM_ARGS(Cur_Drawing, W_PANEL_VALUE, drawing_info);
-	   Cur_UnitName = model_name;
-	   res = generate_drawing();
-	   if(res == -1){
-	      mess = "无法生成基座:" + Cur_UnitName + "的制作图";
-	      U_MESSAGE(mess);
-	   }
+        Model_Handle = PM_GET_MEMBER_IN_SET(Selected_Objects, i);
+        /*PIPE对象包含多个PART，需要将其逐一加入到Model_Set中*/
+        model_set = PM_GET_OBJECTS_IN_GROUP(Model_Handle);
+        model_number = PM_NR_MEMBERS_IN_SET(model_set);
+        for(j=0;j<model_number;j=j+1;){
+            nth = 0;
+            model = PM_GET_MEMBER_IN_SET(model_set,j);            
+            type = PM_GET_OBJDATA(model,nth,MMT_TAG_OBJTYPE);
+            if(type == "3"){
+                part_number = PM_NR_PARTS_IN_PIPE(model);
+                for(k=1;k<=part_number;k=k+1;){
+                    obj_id = PM_GET_OBJDATA(model,k,MMT_TAG_OBJID);
+                    part_h = PM_FIND_BY_OBJID(obj_id);
+                    PM_ADD_OBJECT_TO_SET(part_h,model_set);                
+                }
+            }
+            else{
+                PM_ADD_OBJECT_TO_SET(model,model_set);             
+            }        
+        }
+        Model_Set = PM_INIT_SET();
+        PM_SETOP_OR(Model_Set,model_set);
+        PM_FREE_SET(model_set);	  	   
+        process_info = ITOASCII(i+1) + "/" + ITOASCII(models_number);
+        W_SET_PANELITEM_ARGS(Process, W_PANEL_VALUE, process_info);
+        model_name = PM_GET_OBJDATA(Model_Handle,0,MMT_TAG_OBJNAME);
+        drawing_info = "正在处理管基座：" + model_name;
+        W_SET_PANELITEM_ARGS(Cur_Drawing, W_PANEL_VALUE, drawing_info);
+        Cur_UnitName = model_name;
+        res = generate_drawing();
+        if(res == -1){
+            mess = "无法生成基座:" + Cur_UnitName + "的制作图";
+            U_MESSAGE(mess);
+        }
 	}	
-	end_time = GET_TIME();
-	consumption = end_time - start_time;
-	drawing_info = "处理完毕，共耗时" + ITOASCII(consumption) + "秒";
-	W_SET_PANELITEM_ARGS(Cur_Drawing, W_PANEL_VALUE, drawing_info);
-	PM_SET_CURRENT_LOC(x0,y0,z0);
-	return(0);	
+    end_time = GET_TIME();
+    consumption = end_time - start_time;
+    drawing_info = "处理完毕，共耗时" + ITOASCII(consumption) + "秒";
+    W_SET_PANELITEM_ARGS(Cur_Drawing, W_PANEL_VALUE, drawing_info);
+    PM_SET_CURRENT_LOC(x0,y0,z0);
+    return(0);	
 }
 
 generate_drawing()
@@ -1509,7 +1656,11 @@ generate_drawing()
       U_MESSAGE(mess);
       return(-1);
    }
-                               
+
+    /*生成材料表*/
+
+    /*绘制材料表*/
+   
    /*set drawing title information*/
    set_header_field();
         
@@ -1544,10 +1695,55 @@ generate_drawing()
 /* 设置标题栏中的相关信息 */
 set_header_field()
 { 
+    page_header_rec = DM_INIT_TAGREC();
+    res = PM_GET_HEADER_FROM_ACTIVE_DRW(page_header_rec);
+    if(res != 0){
+        U_CONFIRM("无法获取标题栏数据");
+        return(0);
+    }
+    
+    /* 项目信息 */ 	
+    pro_number = W_GET_PANELITEM_ARG(Pro_Number,W_PANEL_VALUE);
+    if(pro_number != ""){
+        DM_SET_TAGVAL(page_header_rec,Tag_Drawing_ShipNumber,pro_number);   
+    }
+    
+    drawing_number = W_GET_PANELITEM_ARG(Dra_Number,W_PANEL_VALUE);
+    if(drawing_number != ""){
+        DM_SET_TAGVAL(page_header_rec,Tag_Drawing_DrawingNumber,drawing_number);   
+    }    
+       
+    /*页码信息*/
+    id = find_model_grid_id(Model_Handle);
+    if(id != -1){
+        W_SET_WINDOW_ARGS(DisplayGrid,W_LISTW_FINDID,id);
+        row = W_GET_WINDOW_ARG(DisplayGrid,W_LISTW_ROW);
+        W_SET_WINDOW_ARGS(DisplayGrid, W_LISTW_ROW, row, W_LISTW_COLUMN, 6);
+        page_number = W_GET_WINDOW_ARG(DisplayGrid, W_LISTW_STRING);
+        if(ISSTRING(page_number)){
+            DM_SET_TAGVAL(page_header_rec,Tag_Drawing_PageNumber,page_number);
+        }
+        W_SET_WINDOW_ARGS(DisplayGrid, W_LISTW_ROW, row, W_LISTW_COLUMN, 7);
+        total_page = W_GET_WINDOW_ARG(DisplayGrid, W_LISTW_STRING);
+        if(ISSTRING(total_page)){
+            DM_SET_TAGVAL(page_header_rec,Tag_Drawing_TotalPage,total_page);
+        } 
+    }
 
+    /* 模型名称 */
+    nth = 0;
+    unit_name = PM_GET_OBJDATA(Model_Handle, nth, MMT_TAG_OBJNAME);
+    if(ISSTRING(unit_name)){
+        DM_SET_TAGVAL(page_header_rec,Tag_Drawing_ModuleName,unit_name);
+    }
 
-     
-	return(0);   
+    /* 舾装件名称 */
+    DM_SET_TAGVAL(page_header_rec,Tag_Drawing_UnitName,"设备基座");
+    
+	/*设置标题栏信息*/
+	res = PM_SET_HEADER_TO_ACTIVE_DRW(page_header_rec);
+    DM_FREE_TAGREC(page_header_rec);
+	return(0);        
 }
 
 get_model_weight()
@@ -1936,6 +2132,7 @@ exit()
 	free_2darray(View_Info);
 	free_2darray(View_Positions);
 	free_2darray(Part_Label_Array);
+    A_FREE(Access_List);
 }
 
 /*Added by Pekka Martin April 2010*/
@@ -1954,3 +2151,404 @@ export_active_drw(format, template_dwr, output_dir)
 	return(r);
 }
 
+/*获取舾装件零件表信息及零件号标注相关信息*/
+/*零件表内容
+1 - mto number      零件编号
+2 - description     零件描述
+3 - material        零件描述
+4 - quantity        长度或者数量
+5 - Weight/unit     单位
+6 - Weight          重量
+7 - remark          备注
+*/
+
+/*零件标注信息内容
+1 - part number   零件编号
+2 - anno_x        零件标注点X坐标
+3 - anno_y        零件标注点Y坐标
+4 - anno_z        零件标注点Z坐标
+*/
+get_mto_table()
+{
+	/*定义用于临时保存零件信息的数组*/
+	temp_mto = alloc_2darray(Max_Parts_Number,7);
+    for(i=0;i<Max_Parts_Number;i=i+1;){
+        put_2darray(temp_mto,i,0,"NOPART");    
+    }
+	temp_anno = alloc_2darray(Max_Parts_Number,4);
+    part_number = PM_NR_MEMBERS_IN_SET(Model_Set);
+    mto_number = 0;
+	/*处理主管零件信息*/
+	for(i=0;i<part_number;i=i+1;){
+        part = PM_GET_MEMBER_IN_SET(Model_Set);
+        nth = 0;
+        part_no = PM_GET_OBJDATA(part,nth,Tag_PartNo);
+        /*零件未编号*/
+        if(ISINT(part_no)){
+            U_CONFIRM("舾装件中包含未编号的零件，零件表无法生成");
+            return(-1)        
+        }
+        /*零件已经编号*/
+        else{
+            get_part_info(part,part_no,temp_mto);        
+        }        
+	}
+
+	/*初始化材料表全局数组*/
+	free_2darray(Mto_Table);
+	Mto_Table = alloc_2darray(mto_number - 1,6);
+	Mto_Number = mto_number - 1;
+
+	/*将材料表信息从临时数组拷贝到全局数组*/
+	for (n = 0; n < mto_number - 1; n = n + 1;){
+		for(m = 0; m < 6; m = m + 1){
+			info = get_2darray(temp_mto,n,m);
+			put_2darray(Mto_Table, n, m, info);
+		}
+	}
+
+	if(Debug){
+		U_MESSAGE("*****************材料表内容****************************");
+		for(i=0;i<Mto_Number;i=i+1;){
+			s1 = get_2darray(Mto_Table,i,0);
+			s2 = get_2darray(Mto_Table,i,1);
+			s3 = get_2darray(Mto_Table,i,2);
+			s4 = get_2darray(Mto_Table,i,3);
+			s5 = get_2darray(Mto_Table,i,4);
+			s6 = get_2darray(Mto_Table,i,5);
+			mess = s1 + ";" + s2 + ";" + s3 + ";" + s4 + ";" + s5 + ";" + s6 ;
+			U_MESSAGE(mess);
+		}
+	}
+
+	/*初始化材料表标注信息全局数组*/
+	free_2darray(Mto_Label_Table);
+	Mto_Label_Table = alloc_2darray(Mto_Number,4);
+
+	/*将材料表标注信息从临时数组拷贝到全局数组*/
+	for (n = 0; n < Mto_Number; n = n + 1;){
+		for(m = 0; m < 4; m = m + 1){
+			info = get_2darray(temp_anno,n,m);
+			put_2darray(Mto_Label_Table, n, m, info);
+		}
+	}
+
+	/*保存弯管数量到全局变量*/
+	Bent_Piece_Number = bent_piece_number;
+
+	/*释放临时数组的资源*/
+	free_2darray(temp_mto);
+	free_2darray(temp_anno);
+	return(0);
+}
+
+get_part_info(part,part_no,temp_mto)
+{
+    nth = 0;
+    type = PM_GET_OBJDATA(part,nth,MMT_TAG_OBJTYPE);
+    if(type == "1"){        /*设备*/
+        get_equipment_info(part,part_no,temp_mto);
+    }
+    else if(type == "2"){    /*标准件*/   
+        get_standard_part_info(part,part_no,temp_mto);
+    }
+    else if(type == "4"){    /*标准舾装件及板材*/ 
+        qty = PM_GET_OBJDATA(part,nth,MMT_TAG_BOM_QUANTITY);
+        if(ISSTRING(qty)){  /*标准舾装件*/
+            get_std_structural_comp_info(part,part_no,temp_mto);
+        }
+        else{               /*板材*/
+            get_steel_plate_info(part,part_no,temp_mto);        
+        }        
+    }
+    else if(type == "5"){    /*型材*/   
+        get_beam_info(part,part_no,temp_mto);
+    }    
+
+}
+
+get_equipment_info(part,part_no,temp_mto)
+{
+    part_index = String_To_Int(part_no);
+    part_no_init = get_2darray(temp_mto,part_index,0);
+    nth = 0;
+    part_id = PM_GET_OBJDATA(part,nth,MMT_TAG_PARTID);
+    if(part_no_init == "NOPART"){
+        /*1. 零件编号*/
+        put_2darray(temp_mto,part_index,0,part_no);
+        /*2. 零件描述*/        
+        description = DM_PARTID_DATA(part_id,".dG");        
+        put_2darray(temp_mto,part_index,1,description);
+        /*3. 材料*/
+        put_2darray(temp_mto,part_index,2,"钢");
+        /*4. 数量*/
+        put_2darray(temp_mto,part_index,3,1);        
+        /*5. 单重*/
+        weight = 1.0 * PM_GET_OBJDATA(part,nth,MMT_TAG_MASS);
+        put_2darray(temp_mto,part_index,4,weight);
+        /*6. 总重*/        
+        put_2darray(temp_mto,part_index,5,weight);        
+        /*7. 备注*/ 
+        remark = PM_GET_OBJDATA(part,nth,Tag_Remark);
+        if(ISSTRING(remark)){
+            put_2darray(temp_mto,part_index,6,remark);
+        }
+        else{
+            put_2darray(temp_mto,part_index,6,"");   
+        }          
+    }
+    else{
+        /*4. 数量*/
+        part_number = get_2darray(temp_mto,part_index,3) + 1;
+        put_2darray(temp_mto,part_index,3,part_number); 
+        /*6. 总重*/ 
+        weight = part_number * PM_GET_OBJDATA(part,nth,MMT_TAG_MASS);
+        put_2darray(temp_mto,part_index,5,weight);    
+    }
+}
+
+get_standard_part_info(part,part_no,temp_mto)
+{
+    part_index = String_To_Int(part_no);
+    part_no_init = get_2darray(temp_mto,part_index,0);
+    nth = 0;
+    part_id = PM_GET_OBJDATA(part,nth,MMT_TAG_PARTID);
+    if(part_no_init == "NOPART"){
+        /*1. 零件编号*/
+        put_2darray(temp_mto,part_index,0,part_no);
+        /*2. 零件描述*/        
+        description = "";
+        des = DM_PARTID_DATA(part_id,"DE");
+        size = DM_PARTID_DATA(part_id,"DD");
+        std = DM_PARTID_DATA(part_id,"ST");
+        if(ISSTRING(des)){
+            description = des;
+        }
+        if(ISSTRING(size)){
+            description = description + " " + size;
+        }
+        if(ISSTRING(std)){
+            description = description + " " + std;
+        }
+        put_2darray(temp_mto,part_index,1,description);
+        /*3. 材料*/
+        materail = DM_PARTID_DATA(part_id,"MC");
+        if(ISSTRING(materail)){
+            put_2darray(temp_mto,part_index,2,materail);        
+        }
+        else{
+            put_2darray(temp_mto,part_index,2,"钢");
+        }        
+        /*4. 数量*/
+        put_2darray(temp_mto,part_index,3,1);        
+        /*5. 单重*/
+        weight = 1.0 * PM_GET_OBJDATA(part,nth,MMT_TAG_MASS);
+        put_2darray(temp_mto,part_index,4,weight);
+        /*6. 总重*/        
+        put_2darray(temp_mto,part_index,5,weight);        
+        /*7. 备注*/ 
+        remark = PM_GET_OBJDATA(part,nth,Tag_Remark);
+        if(ISSTRING(remark)){
+            put_2darray(temp_mto,part_index,6,remark);
+        }
+        else{
+            put_2darray(temp_mto,part_index,6,"");   
+        }          
+    }
+    else{
+        /*4. 数量*/
+        part_number = get_2darray(temp_mto,part_index,3) + 1;
+        put_2darray(temp_mto,part_index,3,part_number); 
+        /*6. 总重*/ 
+        weight = part_number * PM_GET_OBJDATA(part,nth,MMT_TAG_MASS);
+        put_2darray(temp_mto,part_index,5,weight);    
+    }
+}
+
+get_std_structural_comp_info(part,part_no,temp_mto)
+{
+    part_index = String_To_Int(part_no);
+    part_no_init = get_2darray(temp_mto,part_index,0);
+    nth = 0;
+    part_id = PM_GET_OBJDATA(part,nth,MMT_TAG_PARTID);
+    if(part_no_init == "NOPART"){
+        /*1. 零件编号*/
+        put_2darray(temp_mto,part_index,0,part_no);
+        /*2. 零件描述*/        
+        description = "";
+        des = DM_PARTID_DATA(part_id,Tag_StructuralComponent_Description);  
+        size = DM_PARTID_DATA(part_id,Tag_StructuralComponent_TypeSize); 
+        std = DM_PARTID_DATA(part_id,Tag_StructuralComponent_Standard); 
+        if(ISSTRING(des)){
+            description = des;
+        }
+        if(ISSTRING(size)){
+            description = description + " " + size;
+        }
+        if(ISSTRING(std)){
+            description = description + " " + std;
+        }               
+        put_2darray(temp_mto,part_index,1,description);
+        /*3. 材料*/
+        materail = DM_PARTID_DATA(part_id,Tag_StructuralComponent_Material);
+        if(ISSTRING(materail)){
+            put_2darray(temp_mto,part_index,2,materail);        
+        }
+        else{
+            put_2darray(temp_mto,part_index,2,"钢");
+        }
+        /*4. 数量*/
+        put_2darray(temp_mto,part_index,3,1);        
+        /*5. 单重*/
+        weight = 1.0 * PM_GET_OBJDATA(part,nth,MMT_TAG_MASS);
+        put_2darray(temp_mto,part_index,4,weight);
+        /*6. 总重*/        
+        put_2darray(temp_mto,part_index,5,weight);        
+        /*7. 备注*/ 
+        remark = PM_GET_OBJDATA(part,nth,Tag_Remark);
+        if(ISSTRING(remark)){
+            put_2darray(temp_mto,part_index,6,remark);
+        }
+        else{
+            put_2darray(temp_mto,part_index,6,"");   
+        }               
+    }
+    else{
+        /*4. 数量*/
+        part_number = get_2darray(temp_mto,part_index,3) + 1;
+        put_2darray(temp_mto,part_index,3,part_number); 
+        /*6. 总重*/ 
+        weight = part_number * PM_GET_OBJDATA(part,nth,MMT_TAG_MASS);
+        put_2darray(temp_mto,part_index,5,weight);    
+    }
+}
+
+get_steel_plate_info(part,part_no,temp_mto)
+{
+    part_index = String_To_Int(part_no);
+    part_no_init = get_2darray(temp_mto,part_index,0);
+    nth = 0;
+    part_id = PM_GET_OBJDATA(part,nth,MMT_TAG_PARTID);
+    if(part_no_init == "NOPART"){
+        /*1. 零件编号*/
+        put_2darray(temp_mto,part_index,0,part_no);
+        /*2. 零件描述*/        
+        description = "";
+        des = DM_PARTID_DATA(part_id,"DE");
+        size = DM_PARTID_DATA(part_id,"DD");
+        std = DM_PARTID_DATA(part_id,"ST");
+        if(ISSTRING(des)){
+            description = des;
+        }
+        if(ISSTRING(size)){
+            description = description + " " + size;
+        }
+        if(ISSTRING(std)){
+            description = description + " " + std;
+        }
+        put_2darray(temp_mto,part_index,1,description);
+        /*3. 材料*/
+        materail = DM_PARTID_DATA(part_id,"MC");
+        if(ISSTRING(materail)){
+            put_2darray(temp_mto,part_index,2,materail);        
+        }
+        else{
+            put_2darray(temp_mto,part_index,2,"钢");
+        }        
+        /*4. 数量*/
+        area = 1.0 * PM_GET_OBJDATA(part,nth,"_PA");
+        put_2darray(temp_mto,part_index,3,area);        
+        /*5. 单重*/
+        unit_weight = DM_PARTID_DATA(part_id,"DC1");
+        if(!ISSTRING(unit_weight)){
+            put_2darray(temp_mto,part_index,4,unit_weight);
+        }
+        else{
+            put_2darray(temp_mto,part_index,4,0);
+        }
+        /*6. 总重*/  
+        weight = 1.0 * PM_GET_OBJDATA(part,nth,MMT_TAG_MASS);
+        put_2darray(temp_mto,part_index,5,weight);        
+        /*7. 备注*/ 
+        remark = PM_GET_OBJDATA(part,nth,Tag_Remark);
+        if(ISSTRING(remark)){
+            put_2darray(temp_mto,part_index,6,remark);
+        }
+        else{
+            put_2darray(temp_mto,part_index,6,"");   
+        }          
+    }
+    else{
+        /*4. 数量*/
+        area = get_2darray(temp_mto,part_index,3) + 1.0 * PM_GET_OBJDATA(part,nth,"_PA");
+        put_2darray(temp_mto,part_index,3,area); 
+        /*6. 总重*/ 
+        weight = get_2darray(temp_mto,part_index,5) + 1.0 * PM_GET_OBJDATA(part,nth,MMT_TAG_MASS);
+        put_2darray(temp_mto,part_index,5,weight);    
+    }
+}
+
+get_steel_plate_info(part,part_no,temp_mto)
+{
+    part_index = String_To_Int(part_no);
+    part_no_init = get_2darray(temp_mto,part_index,0);
+    nth = 0;
+    part_id = PM_GET_OBJDATA(part,nth,MMT_TAG_PARTID);
+    if(part_no_init == "NOPART"){
+        /*1. 零件编号*/
+        put_2darray(temp_mto,part_index,0,part_no);
+        /*2. 零件描述*/        
+        description = "";
+        des = DM_PARTID_DATA(part_id,"DE");
+        size = DM_PARTID_DATA(part_id,"DD");
+        std = DM_PARTID_DATA(part_id,"ST");
+        if(ISSTRING(des)){
+            description = des;
+        }
+        if(ISSTRING(size)){
+            description = description + " " + size;
+        }
+        if(ISSTRING(std)){
+            description = description + " " + std;
+        }
+        put_2darray(temp_mto,part_index,1,description);
+        /*3. 材料*/
+        materail = DM_PARTID_DATA(part_id,"MC");
+        if(ISSTRING(materail)){
+            put_2darray(temp_mto,part_index,2,materail);        
+        }
+        else{
+            put_2darray(temp_mto,part_index,2,"钢");
+        }        
+        /*4. 数量*/
+        area = 1.0 * PM_GET_OBJDATA(part,nth,"_PA");
+        put_2darray(temp_mto,part_index,3,area);        
+        /*5. 单重*/
+        unit_weight = DM_PARTID_DATA(part_id,"DC1");
+        if(!ISSTRING(unit_weight)){
+            put_2darray(temp_mto,part_index,4,unit_weight);
+        }
+        else{
+            put_2darray(temp_mto,part_index,4,0);
+        }
+        /*6. 总重*/  
+        weight = 1.0 * PM_GET_OBJDATA(part,nth,MMT_TAG_MASS);
+        put_2darray(temp_mto,part_index,5,weight);        
+        /*7. 备注*/ 
+        remark = PM_GET_OBJDATA(part,nth,Tag_Remark);
+        if(ISSTRING(remark)){
+            put_2darray(temp_mto,part_index,6,remark);
+        }
+        else{
+            put_2darray(temp_mto,part_index,6,"");   
+        }          
+    }
+    else{
+        /*4. 数量*/
+        area = get_2darray(temp_mto,part_index,3) + 1.0 * PM_GET_OBJDATA(part,nth,"_PA");
+        put_2darray(temp_mto,part_index,3,area); 
+        /*6. 总重*/ 
+        weight = get_2darray(temp_mto,part_index,5) + 1.0 * PM_GET_OBJDATA(part,nth,MMT_TAG_MASS);
+        put_2darray(temp_mto,part_index,5,weight);    
+    }
+}

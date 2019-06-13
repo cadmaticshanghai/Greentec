@@ -7,11 +7,32 @@
 #define	BlockName               ".m1"       /* 舾装件所属分段 */
 #define	UnitMaterial            "!04"       /* 舾装件材料 */
 
+/*define tag of model part*/
+#define	Tag_PartNo                   "~P0"			/*零件编号*/
+#define	Tag_Description              "DE"			/*零件描述（名称） - 系统默认属性*/
+#define	Tag_TypeSize                 "DD"			/*零件规格 - 系统默认属性*/
+#define	Tag_Standard                 "ST"			/*零件标准 - 系统默认属性*/
+#define	Tag_Materail                 "MC"			/*零件材料 - 系统默认属性*/
+#define	Tag_Weight                   "MAS"			/*零件重量 - 系统默认属性*/
+#define	Tag_Unit                     "~04"			/*零件标准*/
+#define	Tag_MaterialCode             "~P1"			/*零件物资编码*/ 
+#define	Tag_Remark                   "U83"			/*零件备注*/
+
+/*Define GDL for Structural Component tag */
+#define	Tag_StructuralComponent_Description		".dG"	/*舾装零件描述（名称） - 系统默认属性*/
+#define	Tag_StructuralComponent_TypeSize		"=07"	/*舾装零件规格*/
+#define	Tag_StructuralComponent_Standard		"=04"	/*舾装零件标准*/
+#define	Tag_StructuralComponent_Material		"=02"	/*舾装零件材质*/
+#define	Tag_StructuralComponent_Unit			"=03"	/*舾装零件单位*/
+#define	Tag_StructuralComponent_PaintingArea	"=03"	/*舾装零件油漆面积*/
+
 /* define drawing tag name */ 
-#define	Tag_Drawing_ShipNumber       "~D1"      /* 船号 */
-#define	Tag_Drawing_DrawingNumber    "~D2"      /* 图号 */
-#define	Tag_Drawing_PageNumber       "~D3"      /* 页码 */
-#define	Tag_Drawing_TotalPage        "~D4"      /* 总页数 */
+#define	Tag_Drawing_ShipNumber      "~D1"      /* 船号 */
+#define	Tag_Drawing_DrawingNumber   "~D2"      /* 图号 */
+#define	Tag_Drawing_PageNumber      "~D3"      /* 页码 */
+#define	Tag_Drawing_TotalPage       "~D4"      /* 总页数 */
+#define	Tag_Drawing_ModuleName      "~G6"      /* 模型名 */
+#define	Tag_Drawing_UnitName        "G04"      /* 舾装件名称 */
 
 /*尺寸标注设置*/
 global int		DimLinePen = 1;
@@ -30,13 +51,13 @@ global float		DimSymHeight = 2.0;
 #define  CreationTime    ".c6"
 
 /* define view position*/
-global int	View1_X = 85, View1_Y = 210;
-global int 	View2_X = 200,View2_Y = 210;
+global int	View1_X = 85, View1_Y = 200;
+global int 	View2_X = 200,View2_Y = 200;
 global int 	View3_X = 85, View3_Y = 77;
-global int 	View4_X = 320,View4_Y = 210;
+global int 	View4_X = 320,View4_Y = 200;
 
 /*define view size*/
-global float	View_Size  = 120;
+global float	View_Size  = 150;
 global float	View_Scale = 50;
 global handle View_Info,View_Handles,View_Names,View_Positions;
 
@@ -53,6 +74,33 @@ global   int      Group_Type_I = 7;
 
 /* 零件标注相关系统变量 */
 #define	Lbl_Name_Part_No	"Part_no_ref"
+
+/*保存管段零件表内容的全局数组*/
+global handle Mto_Table;
+global handle Mto_Label_Table;
+global int Mto_Number = 0;
+
+/*零件表相关设置*/
+global int Mto_Table_Orign_X = 213.25;
+global int Mto_Table_Orign_Y = 16.93;
+global int Mto_Table_W = 200.3;
+global int Mto_Table_H = 4.73;
+global int Mto_Table_Column1_W = 15.97;
+global int Mto_Table_Column2_W = 64.77;
+global int Mto_Table_Column3_W = 19.92;
+global int Mto_Table_Column4_W = 29.91;
+global int Mto_Table_Column5_W = 22.42;
+global int Mto_Table_Column6_W = 22.44;
+global int Mto_Table_Column7_W = 24.9;
+global string Mto_Table_Direction = "Up"; /* Down - 从上向下 Up - 从下向上*/
+global int Mto_Table_Line_Type = 0;
+global int Mto_Table_Line_Colour = 1;
+global int Mto_Table_Pattern_Length = 0;
+global int Mto_Table_Text_Colour = 2;
+global int Mto_Table_Text_Height = 2.5;
+
+global int Max_Parts_Number = 500;
+
 
 set_column_title(handle wobj, column_titles, column_number)
 {
@@ -71,15 +119,4 @@ set_column_title(handle wobj, column_titles, column_number)
 		}
 	}
 	return(0);
-}
-
-remove_module_name(seat_no)
-{
-   name = STRINGTERM(seat_no,"-");
-   no = SEARCH(seat_no,"-");
-   length = STRLEN(name);
-   if(length > 2){
-      name = TAIL(name,2);
-      seat_no = name + no;
-   } 
 }

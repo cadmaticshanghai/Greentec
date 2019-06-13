@@ -1061,6 +1061,7 @@ add_extra_length(pipe)
 		if(gty == "1"){
 			/* 如果起始直段跟结束直段是同一个直段，则无需再加余量*/
 			if(sequence == start_part_sequence){
+                res = PM_ASSIGN_ATTRIBUTE(extra_end,pipe,sequence,50); /*Greentec要求无论是否直管，两头都要加余量*/
 				find_end = 1;
 			}
 			else{

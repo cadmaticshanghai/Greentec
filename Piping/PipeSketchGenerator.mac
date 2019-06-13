@@ -3375,7 +3375,7 @@ get_mto_table()
 			/*零件数量*/
 			put_2darray(temp_mto,mto_number-1,1,"1");
 			/*零件单位*/
-			put_2darray(temp_mto,mto_number-1,2,"个");
+			put_2darray(temp_mto,mto_number-1,2,"Piece");
 			/*零件描述*/
 			pipe = get_2darray(Spool_Parts,i,1);
 			nth_part = get_2darray(Spool_Parts,i,3);
@@ -3414,7 +3414,7 @@ get_mto_table()
 			/*零件数量*/
 			put_2darray(temp_mto,mto_number-1,1,"1");
 			/*零件单位*/
-			put_2darray(temp_mto,mto_number-1,2,"个");
+			put_2darray(temp_mto,mto_number-1,2,"Piece");
 			/*零件描述*/
 			description = get_doubleplate_description(doubleplate_handle);
 			put_2darray(temp_mto,mto_number-1,3,description);
@@ -3445,7 +3445,7 @@ get_mto_table()
 			/*零件数量*/
 			put_2darray(temp_mto,mto_number-1,1,"1");
 			/*零件单位*/
-			put_2darray(temp_mto,mto_number-1,2,"个");
+			put_2darray(temp_mto,mto_number-1,2,"Piece");
 			/*零件描述*/
 			description = get_part_description(penetration,0,type);
 			put_2darray(temp_mto,mto_number-1,3,description);

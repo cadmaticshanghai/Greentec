@@ -861,7 +861,6 @@ BeamWithSameSize(beam1,beam2)
     nth = 0;
     length1 = String_To_Float(PM_GET_OBJDATA(beam1,nth,MMT_TAG_AXIS_LEN));
     length2 = String_To_Float(PM_GET_OBJDATA(beam2,nth,MMT_TAG_AXIS_LEN));
-	TRAP();
     if(length1-length2<-1 | length1-length2>1){
         return(0);
     } 
