@@ -1,0 +1,257 @@
+/* $Id: RotateBeamAs.mac,v1.0.0 2019/06/24 Jack.Leng $ */
+
+/*
+**	这个程序用于将指定角钢旋转与参考角钢平行
+*/
+
+#include "include/dmutil.h"
+#include "include/win.h"
+#include "include/win_panel.h"
+#include "include/PmMgeTags.h"
+#include "include/pm.h"
+#include "include/pm_core_tags.h"
+#include "include/array.mac"
+#include "include/geoutils.h"
+#include "include/cos.h"
+#include "include/quants.h"
+#include "include/dm_cos_schema.h"
+
+#include "$GreenTec/Include/Common_Utility.h"
+#include "$GreenTec/Include/Structural_Utility.h"
+#include "$GreenTec/Include/Math_Utility.h"
+
+main()
+{
+    x0 = 0.0; y0 = 0.0; z0 = 0.0;
+    
+    handle_1 = pick_beam_handle("请选择需要操作的型材");
+    if (!handle_1) return(0);
+    
+    res = pick_rotate_position(x0,y0,z0);
+    if(res<0) return(0);
+    
+    handle_2 = pick_beam_handle("请选择参考型材");
+    if (!handle_2) return(0);
+    
+    rotate_section(handle_1, handle_2, x0,y0,z0);
+    res = U_YESNO("旋转是否合适 ?",0);
+    if(res != 1) PM_UM_UNDO_LAST_CHANGE();
+
+}
+
+/*选择型材*/
+pick_beam_handle(prompt)
+{
+    while(1){
+        tmp = 0;
+        picked_handle = PM_PICK_OBJECT(prompt, tmp, "BEAM");
+        if (!ISINT(picked_handle)){
+            obj_type = PM_GET_OBJDATA(picked_handle, tmp, MMT_TAG_OBJTYPE);
+            if(obj_type == "5"){			
+                return (picked_handle);
+            }
+            else{
+                U_CONFIRM("请选择型材进行操作");
+            }
+        }
+        else{
+            return(0);
+        }
+    }
+}
+
+/*旋转基点*/
+pick_rotate_position(x,y,z)
+{
+	px = 0.0; py = 0.0; pz = 0.0;
+	trace_handle = PM_NEW_TRACEP();  
+	PM_GET_CURRENT_LOC(px,py,pz);  
+	res = PM_GET_POINT("请选择旋转基点", trace_handle, px, py, pz); 
+	if(res<0) return(-1);
+    x=px;
+    y=py;
+    z=pz;
+    return(0);
+}
+    
+/*旋转角钢*/
+rotate_section(section_handle_1, section_handle_2, x0,y0,z0)
+{
+    /*normal direction of beam_1*/
+    u1_x = 0.0; u1_y = 0.0; u1_z = 0.0;
+    axs = PM_GET_OBJDATA(section_handle_1,0,"axs");
+    axr = PM_GET_OBJDATA(section_handle_1,0,"axr");
+    angle_to_direction(axs,axr, u1_x,u1_y,u1_z);
+
+    /*axis direction of beam_1*/
+    v1_x = 0.0; v1_y = 0.0; v1_z = 0.0;
+    sxs = PM_GET_OBJDATA(section_handle_1,0,"sxs");
+    sxr = PM_GET_OBJDATA(section_handle_1,0,"sxr");
+    angle_to_direction(sxs,sxr, v1_x,v1_y,v1_z);
+    
+    /*normal direction of beam_2*/
+    u2_x = 0.0; u2_y = 0.0; u2_z = 0.0;
+    axs = PM_GET_OBJDATA(section_handle_2,0,"axs");
+    axr = PM_GET_OBJDATA(section_handle_2,0,"axr");
+    angle_to_direction(axs,axr, u2_x,u2_y,u2_z);
+    
+    /*axis direction of beam_2*/
+    v2_x = 0.0; v2_y = 0.0; v2_z = 0.0;
+    sxs = PM_GET_OBJDATA(section_handle_2,0,"sxs");
+    sxr = PM_GET_OBJDATA(section_handle_2,0,"sxr");
+    angle_to_direction(sxs,sxr, v2_x,v2_y,v2_z);
+
+    set = PM_INIT_SET();
+	PM_ADD_OBJECT_TO_SET(section_handle_1, set);
+    rotate_set_to_direction(x0,y0,z0, 
+                            u1_x,u1_y,u1_z, v1_x,v1_y,v1_z,
+                            u2_x,u2_y,u2_z, v2_x,v2_y,v2_z, 
+                            set);
+    PM_FREE_SET(set);
+}
+
+/*方向夹角转换为方向向量*/
+angle_to_direction(ang_s,ang_r, dx,dy,dz)
+{
+    slope_angle = String_To_Float(ang_s);
+    rotation_angle = String_To_Float(ang_r);
+    
+    dx = COS(slope_angle) * COS(rotation_angle);
+    dy = COS(slope_angle) * SIN(rotation_angle);
+    dz = SIN(slope_angle);
+    VEC_UNITV(dx,dy,dz);
+    return (0);
+}
+
+/*
+**旋转与目标向量平行
+*/
+rotate_set_to_direction(x0,y0,z0, ux1,uy1,uz1, vx1,vy1,vz1, ux2,uy2,uz2, vx2,vy2,vz2, set)
+{
+    nr = PM_NR_MEMBERS_IN_SET(set);
+    if (nr == 0) {
+        U_MESSAGE("Empty set, operation canceled");
+        return(-1);
+    }
+    if (PM_WRITE_MDL_OF_SET("rotate.mdl", set) != 0){
+        return(-1);
+    }
+
+    /* 旋转对象的转换矩阵 */
+	trans_1 = PM_CREATE_TMAT(1, x0,y0,z0, ux1,uy1,uz1, vx1,vy1,vz1);
+	trans_1 = PM_INVERSE_TMAT(trans_1);
+
+    /* 变换到原点 */
+    trans_0 = TRF_TMAT_CREATE();
+    trans_2 = PM_JOIN_TMATS(trans_0, trans_1);
+    
+    /* 变换到参考对象 */
+    trans_3 = PM_CREATE_TMAT(1, x0,y0,z0, ux2,uy2,uz2, vx2,vy2,vz2);
+    trans_2 = PM_JOIN_TMATS(trans_2, trans_3);
+
+    /* print_matrix(trans_0); */
+    /* print_matrix(trans_1); */
+    /* print_matrix(trans_2); */
+
+	/* open undo task */
+    PM_UM_OPEN_CHANGE("Rotate set");
+
+	/*Notify PM that we are going to relocate objects using a sequence of deletes and MDL-loads. */
+	if (!PM_OK_TO_RELOCATE_OBJECTS_IN_SET(set)) {
+		F_DELETE_FILE("rotate.mdl");
+		PM_UM_CLOSE_CHANGE();
+		return(-1);
+	}
+
+	PM_DELETE_OBJECTS_IN_SET(set, 0);
+	PM_READ_MDL_INTO_SET("rotate.mdl", 1, "", trans_2, set);
+	PM_RELOCATION_ACCEPTED();
+	PM_UM_CLOSE_CHANGE();
+	F_DELETE_FILE("rotate.mdl");
+	return(0);
+}
+
+/*打印转换矩阵*/
+print_matrix(mat)
+{
+    U_MESSAGE("");
+    elem_00=0.0;
+    elem_01=0.0;
+    elem_02=0.0;
+    elem_03=0.0;
+    TRF_TMAT_GET(mat, 0, 0, elem_00);
+    TRF_TMAT_GET(mat, 0, 1, elem_01);
+    TRF_TMAT_GET(mat, 0, 2, elem_02);
+    TRF_TMAT_GET(mat, 0, 3, elem_03);
+    U_MESSAGE(FTOASCII(elem_00)+" "+FTOASCII(elem_01)+" "+FTOASCII(elem_02)+" "+FTOASCII(elem_03));
+    elem_10=0.0;
+    elem_11=0.0;
+    elem_12=0.0;
+    elem_13=0.0;
+    TRF_TMAT_GET(mat, 1, 0, elem_10);
+    TRF_TMAT_GET(mat, 1, 1, elem_11);
+    TRF_TMAT_GET(mat, 1, 2, elem_12);
+    TRF_TMAT_GET(mat, 1, 3, elem_13);
+    U_MESSAGE(FTOASCII(elem_10)+" "+FTOASCII(elem_11)+" "+FTOASCII(elem_12)+" "+FTOASCII(elem_13));
+    elem_20=0.0;
+    elem_21=0.0;
+    elem_22=0.0;
+    elem_23=0.0;
+    TRF_TMAT_GET(mat, 2, 0, elem_20);
+    TRF_TMAT_GET(mat, 2, 1, elem_21);
+    TRF_TMAT_GET(mat, 2, 2, elem_22);
+    TRF_TMAT_GET(mat, 2, 3, elem_23);
+    U_MESSAGE(FTOASCII(elem_20)+" "+FTOASCII(elem_21)+" "+FTOASCII(elem_22)+" "+FTOASCII(elem_23));
+    elem_30=0.0;
+    elem_31=0.0;
+    elem_32=0.0;
+    elem_33=0.0;
+    TRF_TMAT_GET(mat, 3, 0, elem_30);
+    TRF_TMAT_GET(mat, 3, 1, elem_31);
+    TRF_TMAT_GET(mat, 3, 2, elem_32);
+    TRF_TMAT_GET(mat, 3, 3, elem_33);
+    U_MESSAGE(FTOASCII(elem_30)+" "+FTOASCII(elem_31)+" "+FTOASCII(elem_32)+" "+FTOASCII(elem_33));    
+    U_MESSAGE("");
+}
+
+/*
+**旋转与目标向量平行(old)
+*/
+rotate_set_to_direction_b(x0,y0,z0, ux1,uy1,uz1, vx1,vy1,vz1, ux2,uy2,uz2, vx2,vy2,vz2, set)
+{
+    nr = PM_NR_MEMBERS_IN_SET(set);
+    if (nr == 0) {
+        U_MESSAGE("Empty set, operation canceled");
+        return(-1);
+    }
+    if (PM_WRITE_MDL_OF_SET("rotate.mdl", set) != 0){
+        return(-1);
+    }
+
+    cur_dx = -x0; cur_dy = -y0; cur_dz = -z0;
+	local_to_global = PM_CREATE_TMAT(1, cur_dx,cur_dy,cur_dz, ux1,uy1,uz1, vx1,vy1,vz1);
+	global_to_local = PM_INVERSE_TMAT(local_to_global);
+
+    rotm = PM_CREATE_TMAT(1, 0.0,0.0,0.0, ux2,uy2,uz2, vx2,vy2,vz2);
+    tm1  = PM_JOIN_TMATS(local_to_global, rotm);
+	tmat = PM_JOIN_TMATS(tm1, global_to_local);
+    
+	/* open undo task */
+    PM_UM_OPEN_CHANGE("Rotate set");
+
+	/*Notify PM that we are going to relocate objects using a sequence of deletes and MDL-loads. */
+	if (!PM_OK_TO_RELOCATE_OBJECTS_IN_SET(set)) {
+		F_DELETE_FILE("rotate.mdl");
+		PM_UM_CLOSE_CHANGE();
+		return(-1);
+	}
+
+	PM_DELETE_OBJECTS_IN_SET(set, 0);
+	res = PM_READ_MDL_INTO_SET("rotate.mdl", 1, "", tmat, set);
+    U_MESSAGE(FTOASCII(res));
+
+	PM_RELOCATION_ACCEPTED();
+	PM_UM_CLOSE_CHANGE();
+	F_DELETE_FILE("rotate.mdl");
+	return(0);
+}

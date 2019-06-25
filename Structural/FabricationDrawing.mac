@@ -94,12 +94,12 @@ global handle   Access_List;                /*用于保存模型权限状态的数组*/
 init()
 {
 	Drawing_Tag_Array = A_ALLOC(Column_Number, "STRING");
-	A_PUT(Drawing_Tag_Array,0,BlockName);
-	A_PUT(Drawing_Tag_Array,1,PlanningUnit);
+	A_PUT(Drawing_Tag_Array,0,Tag_Block_Number);
+	A_PUT(Drawing_Tag_Array,1,Tag_PlanningUnit);
 	A_PUT(Drawing_Tag_Array,2,MMT_TAG_OBJNAME);
-	A_PUT(Drawing_Tag_Array,3,DrawingStatus);
-	A_PUT(Drawing_Tag_Array,4,DrawingName);
-	A_PUT(Drawing_Tag_Array,5,CreationTime);
+	A_PUT(Drawing_Tag_Array,3,Tag_DrawingStatus);
+	A_PUT(Drawing_Tag_Array,4,Tag_DrawingName);
+	A_PUT(Drawing_Tag_Array,5,Tag_CreationTime);
 	A_PUT(Drawing_Tag_Array,6,"");
 	A_PUT(Drawing_Tag_Array,7,"");
 	
@@ -214,7 +214,7 @@ get_model_info()
 		parts = PM_GET_OBJECTS_IN_GROUP(object_handle);
 		part0 = PM_GET_MEMBER_IN_SET(parts,0);
 		/*get block of model group*/
-		block_name = PM_GET_OBJDATA(part0,1,BlockName);
+		block_name = PM_GET_OBJDATA(part0,1,Tag_Block_Number);
 		if(ISSTRING(block_name)){
 		   put_2darray(Object_Info,i,0,block_name);
 		}
@@ -222,7 +222,7 @@ get_model_info()
 		   put_2darray(Object_Info,i,0,"Undefine");
 		}	
 		/*get planning unit of model group*/
-		planning_unit = PM_GET_OBJDATA(part0,1,PlanningUnit);
+		planning_unit = PM_GET_OBJDATA(part0,1,Tag_PlanningUnit);
 		if(ISSTRING(planning_unit)){
 		   put_2darray(Object_Info,i,1,planning_unit);
 		}
@@ -239,7 +239,7 @@ get_model_info()
 		   put_2darray(Object_Info,i,2,unit_name);
 		}
 		/*status of model group*/
-		unit_status = PM_GET_OBJDATA(object_handle,0,DrawingStatus);
+		unit_status = PM_GET_OBJDATA(object_handle,0,Tag_DrawingStatus);
 		if(ISSTRING(unit_status)){
 		   put_2darray(Object_Info,i,3,unit_status);
 		}
@@ -247,7 +247,7 @@ get_model_info()
 		   put_2darray(Object_Info,i,3,"未检查");
 		}		
 		/*get drawing name and the date of creation*/
-		drawing_name = PM_GET_OBJDATA(object_handle,0,DrawingName);
+		drawing_name = PM_GET_OBJDATA(object_handle,0,Tag_DrawingName);
 		if(!ISINT(drawing_name)){
 		   put_2darray(Object_Info,i,4,drawing_name);
 		   date_string = Get_Creation_Date(drawing_name);
@@ -562,7 +562,7 @@ filter_model( models )
 		if(ISINT(model_block_name)){
 		   model_block_name = "Unset";
 		}		
-		model_bon_number = PM_GET_OBJDATA(part,0,PlanningUnit);
+		model_bon_number = PM_GET_OBJDATA(part,0,Tag_PlanningUnit);
 		if(ISINT(model_bon_number)){
 		   model_bon_number = "Unset";
 		}		
@@ -1165,7 +1165,7 @@ delete_drawing_handler(item, event_type, button_value)
    else if(res == 0){
    	for(i=0;i<units_number;i=i+1;){   	   
       	unit_handle = PM_GET_MEMBER_IN_SET(Selected_Objects,i);
-      	drawing_name = Get_Attribute_Value(unit_handle,DrawingName);
+      	drawing_name = Get_Attribute_Value(unit_handle,Tag_DrawingName);
          if(ISSTRING(drawing_name) & drawing_name != "Unset"){          
          	current_version = String_To_Int(SUBSTRING(SEARCH(drawing_name,"-SK"),3));      	
          	for(k=0;k<current_version;k=k+1;){
@@ -1189,7 +1189,7 @@ delete_drawing_handler(item, event_type, button_value)
    else if(res == 1){  	   
    	for(i=0;i<units_number;i=i+1;){   	   
       	unit_handle = PM_GET_MEMBER_IN_SET(Selected_Objects,i);
-      	drawing_name = Get_Attribute_Value(unit_handle,DrawingName);
+      	drawing_name = Get_Attribute_Value(unit_handle,Tag_DrawingName);
          if(ISSTRING(drawing_name) & drawing_name != "Unset"){
          	current_version = String_To_Int(SUBSTRING(SEARCH(drawing_name,"-SK"),3));   	
          	for(k=0;k<=current_version;k=k+1;){
@@ -1208,7 +1208,7 @@ delete_drawing_handler(item, event_type, button_value)
          	   }
          	} 
          } 
-         res = Set_Attribute_Value(unit_handle,DrawingName,"Unset");         
+         res = Set_Attribute_Value(unit_handle,Tag_DrawingName,"Unset");         
          /* display drawing name in grid if it is existed*/
          id = find_model_grid_id(unit_handle);
          if(id != -1){
@@ -1309,7 +1309,7 @@ open_drawing_handler(item, event_type, button_value)
 	}
 	
 	model_handle = PM_GET_MEMBER_IN_SET(Selected_Objects,0);
-	drawing_name = Get_Attribute_Value(model_handle,DrawingName);
+	drawing_name = Get_Attribute_Value(model_handle,Tag_DrawingName);
 	if(ISINT(drawing_name)){
 	   U_CONFIRM("尚未生成图形");
 	   return(0);
@@ -1364,7 +1364,7 @@ print_drawing_handler(item, event_type, button_value)
 	for(i=0;i<models_number;i=i+1;){
    	model_handle = PM_GET_MEMBER_IN_SET(Selected_Objects,i);
    	model_name = PM_GET_OBJDATA(model_handle,0,MMT_TAG_OBJNAME);
-   	drawing_name = Get_Attribute_Value(model_handle,DrawingName);
+   	drawing_name = Get_Attribute_Value(model_handle,Tag_DrawingName);
    	if(ISINT(drawing_name)){
    	   mess = "基座<" + model_name + ">尚未生成图形";
    	   U_MESSAGE(mess);
@@ -1383,7 +1383,7 @@ print_drawing_handler(item, event_type, button_value)
 
    	model_handle = PM_GET_MEMBER_IN_SET(Selected_Objects,i);
    	model_name = PM_GET_OBJDATA(model_handle,0,MMT_TAG_OBJNAME);
-   	drawing_name = Get_Attribute_Value(model_handle,DrawingName);
+   	drawing_name = Get_Attribute_Value(model_handle,Tag_DrawingName);
 	      	   
    	current_drawing = PM_GET_ACTIVE_DRW_NAME();
    	if(current_drawing != ""){
@@ -1433,7 +1433,7 @@ export_pdf_handler(item, event_type, button_value)
 	for(i=0;i<models_number;i=i+1;){
    	model_handle = PM_GET_MEMBER_IN_SET(Selected_Objects,i);
    	model_name = PM_GET_OBJDATA(model_handle,0,MMT_TAG_OBJNAME);
-   	drawing_name = Get_Attribute_Value(model_handle,DrawingName);
+   	drawing_name = Get_Attribute_Value(model_handle,Tag_DrawingName);
    	if(ISINT(drawing_name)){
    	   mess = " 基座<" + model_name + ">尚未生成图形";
    	   U_MESSAGE(mess);
@@ -1502,7 +1502,7 @@ export_dxf_handler(item, event_type, button_value)
 	for(i=0;i<models_number;i=i+1;){
    	model_handle = PM_GET_MEMBER_IN_SET(Selected_Objects,i);
    	model_name = PM_GET_OBJDATA(model_handle,0,MMT_TAG_OBJNAME);
-   	drawing_name = Get_Attribute_Value(model_handle,DrawingName);
+   	drawing_name = Get_Attribute_Value(model_handle,Tag_DrawingName);
    	if(ISINT(drawing_name)){
    	   mess = "基座<" + model_name + ">尚未生成图形";
    	   U_MESSAGE(mess);
@@ -1790,7 +1790,7 @@ create_drawing()
 	}
    
    /*save drawing name to the attribute of model group*/
-   Set_Attribute_Value(Model_Handle,DrawingName,Cur_Drawing_Name);
+   Set_Attribute_Value(Model_Handle,Tag_DrawingName,Cur_Drawing_Name);
    PM_SAVE(0,1,1);
    
    /*display drawing name in grid*/
@@ -2186,7 +2186,7 @@ get_mto_table()
         /*零件未编号*/
         if(ISINT(part_no)){
             U_CONFIRM("舾装件中包含未编号的零件，零件表无法生成");
-            return(-1)        
+            return(-1);       
         }
         /*零件已经编号*/
         else{
@@ -2232,9 +2232,6 @@ get_mto_table()
 			put_2darray(Mto_Label_Table, n, m, info);
 		}
 	}
-
-	/*保存弯管数量到全局变量*/
-	Bent_Piece_Number = bent_piece_number;
 
 	/*释放临时数组的资源*/
 	free_2darray(temp_mto);
@@ -2488,7 +2485,7 @@ get_steel_plate_info(part,part_no,temp_mto)
     }
 }
 
-get_steel_plate_info(part,part_no,temp_mto)
+get_beam_info(part,part_no,temp_mto)
 {
     part_index = String_To_Int(part_no);
     part_no_init = get_2darray(temp_mto,part_index,0);

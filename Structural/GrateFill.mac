@@ -1,0 +1,798 @@
+/*  */
+
+/* 	Confirmation and Undo added to version 1.1 		*/
+/* 	Continuous function added to version 1.1 		*/
+/* 	Selection of system corrected to version 1.2		*/
+/* 	Version 1.3 
+		Animator added to point definition
+		ISSTRING test added to pid selection
+*/
+	
+
+#include "include/dmutil.h"
+#include "include/pm.h"
+#include "include/win.h"
+#include "include/win_panel.h"
+#include "include/pm_core_tags.h"
+
+global handle Sel_sys, System, Pid1, Pid2, Sel_pid1, Sel_pid2; 
+global handle Margin, ZCorrect, BDelta, CDelta, Direction, XJust, YJust, Type;
+global handle GName;
+
+global string 	Pid_B 	= "Grating-0";
+global string 	Pid_C 	= "Grating-0";
+global float 	Marg 	= 5.0;
+global float 	Z_C 	= 0.0;
+global float 	D_B 	= 50.0;
+global float 	D_C 	= 100.0;
+global int 	XJ 	= 0;
+global int 	YJ 	= 0;
+global int 	Dir 	= 0;
+global int 	Typ 	= 0;
+global int 	SysId 	= 0;
+global string 	SysName = "Not Defined!";
+global string 	GroupName = "Not Defined!";
+
+global int Stop = 0;
+
+main()
+{
+	while(1){	
+		x1 = 0.0; y1 = 0.0; z1 = 0.0;
+		x2 = 0.0; y2 = 0.0;
+		if(get_points(x1,y1,z1,x2,y2) < 0){
+	 		return(-1);
+		}
+	
+		get_appdefs();
+
+		tool  = create_top_frame();
+		panel = create_panel(tool);
+		W_MAP_FRAME(tool);
+		W_RUN_FRAME(tool);
+		W_UNMAP_FRAME(tool);
+		W_DESTROY_FRAME(tool);
+	
+		if(Stop) return(-1);
+	
+		if(GroupName == "Not Defined!")
+		{
+		    U_CONFIRM("未定义模型组名称");
+		    return(-1);
+		}
+	
+		if(margin_to_points(x1,y1,x2,y2) < 0) return(-1);
+	
+		/* correction to Z-value */
+		z1 = z1 + Z_C;
+	
+		owi = PM_GET_CURRENT_DESAREA();
+	
+		if(Dir == 0){
+			pidx = Pid_B;
+			dx   = D_B;
+			pidy = Pid_C;
+			dy   = D_C;
+		}
+		else{
+			pidx = Pid_C;
+			dx   = D_C;
+			pidy = Pid_B;
+			dy   = D_B;
+		}
+
+		xdist = x2 - x1;
+		xn_flo = xdist/dx;				/* float	*/
+		xn_des = 1.0*SEARCH(FTOASCII(xn_flo),".");	/* desimals	*/
+		xn_int = 1*STRINGTERM(FTOASCII(xn_flo),".");	/* integer part	*/
+		
+		ydist = y2 - y1;
+		yn_flo = ydist/dy;				/* float	*/
+		yn_des = 1.0*SEARCH(FTOASCII(yn_flo),".");	/* desimals	*/
+		yn_int = 1*STRINGTERM(FTOASCII(yn_flo),".");	/* integer part	*/
+	
+		xa = x1; xb = x2;
+		ya = y1; yb = y2;
+	
+		if(Typ == 0){
+			x_rest = xdist - xn_int*dx;
+			if(XJ == 1) x1 = x1 + x_rest/2.;
+			if(XJ == 2) x1 = x1 + x_rest;
+	
+			y_rest = ydist - yn_int*dy;
+			if(YJ == 1) y1 = y1 + y_rest/2.;
+			if(YJ == 2) y1 = y1 + y_rest;
+		}
+	
+		if(Typ == 1){
+			if(xn_des > 0.5) xn_int = xn_int + 1;
+			dx = xdist/xn_int;
+			if(yn_des > 0.5) yn_int = yn_int + 1;
+			dy = ydist/yn_int;
+		}
+	
+		fname = "grating.mdl";
+		f = open_mdl_file(fname);
+		if (f < 0) return(-1);
+	
+		inserted = 0;
+	
+		/* increasing X-coordinate */
+		for(n = 0; n <= xn_int; n=n+1;){	
+			x = x1 + n*dx;
+			if(inserted){
+				F_PRINTF(f, ",");
+				F_WRITE_NEWLINE(f);
+			}
+			inserted = inserted + 1;
+			write_beam_mdl(f,owi,SysId,pidx,x,ya,z1,x,yb,z1, -1,0,0, 0,-1,0, 0,1,0);
+		}
+		/* increasing Y-coordinate */
+		for(n = 0; n <= yn_int; n=n+1;){	
+			y = y1 + n*dy;
+			if(inserted){
+				F_PRINTF(f, ",");
+				F_WRITE_NEWLINE(f);
+			}
+			inserted = inserted + 1;
+			write_beam_mdl(f,owi,SysId,pidy,xa,y,z1,xb,y,z1, 0,1,0, -1,0,0, 1,0,0);
+		}
+
+		F_WRITE_NEWLINE(f);
+		F_CLOSE_FILE(f);
+		trm = PM_CREATE_TMAT(2,0.,0.,0.,0.,0.,1.,1.,0.,0.);
+		
+		tempset = PM_INIT_SET(); 
+				
+		/*Add by Wallis 2017-11-23*/
+		st = PM_UM_OPEN_CHANGE("创建格栅板:" + GroupName);
+		
+		PM_READ_MDL_INTO_SET(fname,2,"",trm,tempset);
+		group_h = create_group("7", GroupName);		
+		if(!ISINT(group_h)){
+		    PM_ADD_SET_TO_GROUP(tempset, group_h);
+		}		
+		st = PM_UM_CLOSE_CHANGE();
+		
+		ans = 2;
+		while(ans == 2){
+			ans = U_SELECT("Is Grating OK?","Yes","No","Browse");
+			if(ans == 2){
+				browse = PM_NEW_TRACEP();
+				x = 0.0; y = 0.0; z = 0.0;
+				PM_GET_CURRENT_LOC(x, y, z);
+				PM_GET_POINT("Browsing", browse, x, y, z);    
+			} 	
+		}
+		if(ans == 1 | ans < 0){
+		    PM_UM_UNDO_LAST_CHANGE();
+			/*PM_DELETE_OBJECTS_IN_SET(tempset,0);*/
+			U_MESSAGE(ITOASCII(inserted)+" Beams Removed.");
+		}
+		else U_MESSAGE(ITOASCII(inserted)+" Beams Inserted.");
+		 
+		PM_FREE_SET(tempset); 
+		F_DELETE_FILE(fname);
+	}	
+}
+
+create_group(string group_type, string group_name)
+{
+	rec = DM_INIT_TAGREC();
+	DM_SET_TAGVAL(rec, MMT_TAG_GROUPTYPE, group_type);
+	DM_SET_TAGVAL(rec, MMT_TAG_OBJNAME, group_name);
+	
+	inv_tag = "";
+	obj = PM_CREATE_OBJECT("GROUP", rec, inv_tag);
+	
+	DM_FREE_TAGREC(rec);
+	
+	if (!ISINT(obj)){
+		return(obj);
+		
+	}
+
+	U_MESSAGE("Failed to create group.");
+	U_MESSAGE("Error : " + DM_GET_ERRMSG(obj));
+	if(inv_tag != ""){
+		U_MESSAGE("Bad value in : " + inv_tag);
+	}
+					
+	return(0);
+}
+
+fleq(a,b,dif)
+{
+	if(a > b-dif & a < b+dif) return(1);
+	else return(0);
+}
+write_ABRV(f, group_name, group_number)
+{
+F_PRINTF(f,"ABRV(%s, g%d)", group_name,group_number);
+}
+open_mdl_file(STRING fname)
+{
+if (F_EXIST(fname) == 0) F_CREATE_FILE(fname);
+f = F_OPEN_FILE(fname, "w");
+	if (f < 0) {
+		U_MESSAGE("Cannot open file " + fname);
+		return(-1);
+	}
+return(f);
+}
+write_point(f, x, y, z)
+{
+return(F_PRINTF(f, "P(%.2f,%.2f,%.2f)", x, y, z));
+}
+write_direction(f, dx, dy, dz)
+{
+return(F_PRINTF(f, "D(%.7f,%.7f,%.7f)", dx, dy, dz));
+}
+write_beam_mdl(f, area_id, sid, profile_id, x1, y1, z1, x2, y2, z2, lxx, lxy, 
+					lxz, en1x, en1y, en1z, en2x, en2y, en2z)
+{
+F_PRINTF(f, "STEL(%s,ST(%d,ffffffff,%d,0,0),\n", profile_id, area_id, sid);
+write_point(f, x1, y1, z1);
+F_PRINTF(f, ",");
+write_point(f, x2, y2, z2);
+F_PRINTF(f, ",");
+write_direction(f, lxx, lxy, lxz);
+F_PRINTF(f, ",");
+F_WRITE_NEWLINE(f);
+write_direction(f, en1x, en1y, en1z);
+F_PRINTF(f, ",");
+write_direction(f, en2x, en2y, en2z);
+F_PRINTF(f, ")");
+}
+create_top_frame()
+{
+	tool = W_INIT_FRAME();
+	W_REALIZE_WINDOW(tool, W_FRAME_TITLE, "Grating properties.");
+	return(tool);
+}
+create_panel(tool)
+{
+	panel = 	W_ADD_WINDOW(tool, W_PANEL, "panel");
+			    W_REALIZE_WINDOW(panel, 
+				W_FRAME_X, 0,
+				W_FRAME_Y, 0,
+				W_FRAME_COLS, 50);
+
+	done = 		W_ADD_PANELITEM(panel, W_PANEL_BUTTON, "");
+			    W_REALIZE_PANELITEM(done, 
+				W_PANEL_ROW, 0, 
+				W_PANEL_COL, 0,
+				W_PANEL_BUTTONIMAGE, "Done", 
+				W_PANEL_WIDTH, 6,
+				W_PANEL_BUTTONVALUE, 200,
+				W_PANEL_CALLBACK, 1,
+				W_PANEL_LAYOUT, W_LAYOUT_CENTER);
+			    W_SET_PANELITEM_HANDLER(done, "done_handler");
+
+	quit = 		W_ADD_PANELITEM(panel, W_PANEL_BUTTON, "");
+			    W_REALIZE_PANELITEM(quit, 
+				W_PANEL_ROW, 0, 
+				W_PANEL_COL, 24,
+				W_PANEL_BUTTONIMAGE, "Quit", 
+				W_PANEL_WIDTH, 6,
+				W_PANEL_BUTTONVALUE, 202,
+				W_PANEL_CALLBACK, 1,
+				W_PANEL_LAYOUT, W_LAYOUT_CENTER);
+			    W_SET_PANELITEM_HANDLER(quit, "quit_handler");
+			    
+	GName = 	W_ADD_PANELITEM(panel, W_PANEL_FILL, "GName");
+			    W_REALIZE_PANELITEM(GName, 
+				W_PANEL_ROW, 1, 
+				W_PANEL_COL, 0,
+				W_PANEL_LABEL, "Group Name:",
+				W_PANEL_LENGTH, 36,
+				W_PANEL_VALUE,"Not Defined!",
+				W_PANEL_CALLBACK, 1);
+			    W_SET_PANELITEM_HANDLER(GName, "group_name_handler");
+	
+	Sel_sys = 	W_ADD_PANELITEM(panel, W_PANEL_BUTTON, "");
+			    W_REALIZE_PANELITEM(Sel_sys, 	
+				W_PANEL_ROW, 2, 
+				W_PANEL_COL, 40,
+				W_PANEL_BUTTONIMAGE,"Select System",
+				W_PANEL_WIDTH, 16,
+				W_PANEL_BUTTONVALUE, 202,
+				W_PANEL_CALLBACK, 1);
+			    W_SET_PANELITEM_HANDLER(Sel_sys, "selsys_handler");
+	
+	System = 	W_ADD_PANELITEM(panel, W_PANEL_MESSAGE, "");
+			W_REALIZE_PANELITEM(System,	
+				W_PANEL_ROW, 3, 
+				W_PANEL_COL, 40,
+				W_PANEL_LABEL, "System: "+SysName);
+
+	Pid1 = 		W_ADD_PANELITEM(panel, W_PANEL_FILL, "");
+			W_REALIZE_PANELITEM(Pid1, 
+				W_PANEL_ROW, 10, 
+				W_PANEL_COL, 0,
+				W_PANEL_LABEL, "Bearing bar:",
+				W_PANEL_LENGTH, 26,
+				W_PANEL_VALUE,Pid_B,
+				W_PANEL_CALLBACK, 1);
+			W_SET_PANELITEM_HANDLER(Pid1, "pid1_handler");
+	
+	Pid2 = 		W_ADD_PANELITEM(panel, W_PANEL_FILL, "");
+			W_REALIZE_PANELITEM(Pid2, 
+				W_PANEL_ROW, 11, 
+				W_PANEL_COL, 0,
+				W_PANEL_LABEL, "Crossbar...:",
+				W_PANEL_LENGTH, 26,
+				W_PANEL_VALUE, Pid_C,
+				W_PANEL_CALLBACK, 1);
+			W_SET_PANELITEM_HANDLER(Pid2, "pid2_handler");
+	
+	Sel_pid1 = 	W_ADD_PANELITEM(panel, W_PANEL_BUTTON, "");
+			W_REALIZE_PANELITEM(Sel_pid1, 	
+				W_PANEL_ROW, 10, 
+				W_PANEL_COL, 40,
+				W_PANEL_BUTTONIMAGE,"Select",
+				W_PANEL_WIDTH, 16,
+				W_PANEL_BUTTONVALUE, 202,
+				W_PANEL_CALLBACK, 1);
+			W_SET_PANELITEM_HANDLER(Sel_pid1, "selpid1_handler");
+	
+	Sel_pid2 = 	W_ADD_PANELITEM(panel, W_PANEL_BUTTON, "");
+			W_REALIZE_PANELITEM(Sel_pid2, 	
+				W_PANEL_ROW, 11, 
+				W_PANEL_COL, 40,
+				W_PANEL_BUTTONIMAGE,"Select",
+				W_PANEL_WIDTH, 16,
+				W_PANEL_BUTTONVALUE, 202,
+				W_PANEL_CALLBACK, 1);
+			W_SET_PANELITEM_HANDLER(Sel_pid2, "selpid2_handler");
+
+	Margin = 	W_ADD_PANELITEM(panel, W_PANEL_FILL, "");
+			W_CONFIG_NUMERIC_PANELITEM(Margin, 
+				W_NUMERIC_QUANTITY,0.,100.,"10%.1f",3);			
+			W_REALIZE_PANELITEM(Margin,
+				W_PANEL_ROW, 2, 
+				W_PANEL_COL, 0,
+				W_PANEL_LABEL, "Margins..........:",
+				W_PANEL_LENGTH, 12,
+				W_PANEL_CALLBACK, 1);
+
+			W_SET_NUMERIC_VALUE(Margin,Marg);
+			W_SET_PANELITEM_HANDLER(Margin, "margin_handler");
+
+	ZCorrect = 	W_ADD_PANELITEM(panel, W_PANEL_FILL, "");
+			W_CONFIG_NUMERIC_PANELITEM(ZCorrect, 
+				W_NUMERIC_QUANTITY,-200., 200.,"10%.1f",3);
+			W_REALIZE_PANELITEM(ZCorrect,
+				W_PANEL_ROW, 3, 
+				W_PANEL_COL, 0,
+				W_PANEL_LABEL, "Z-correction.....:",
+				W_PANEL_LENGTH, 12,
+				W_PANEL_CALLBACK, 1);
+
+			W_SET_NUMERIC_VALUE(ZCorrect,Z_C);
+			W_SET_PANELITEM_HANDLER(ZCorrect, "zcorrection_handler");
+
+
+	BDelta = 	W_ADD_PANELITEM(panel, W_PANEL_FILL, "");
+			W_CONFIG_NUMERIC_PANELITEM(BDelta, 
+				W_NUMERIC_QUANTITY,20., 100.,"10%.1f",3);
+			W_REALIZE_PANELITEM(BDelta,
+				W_PANEL_ROW, 4, 
+				W_PANEL_COL, 0,
+				W_PANEL_LABEL, "Bearing bar delta:",
+				W_PANEL_LENGTH, 12,
+				W_PANEL_CALLBACK, 1);
+
+			W_SET_NUMERIC_VALUE(BDelta,D_B);
+			W_SET_PANELITEM_HANDLER(BDelta, "bdelta_handler");
+	
+	CDelta = 	W_ADD_PANELITEM(panel, W_PANEL_FILL, "");
+			W_CONFIG_NUMERIC_PANELITEM(CDelta, 
+				W_NUMERIC_QUANTITY,20., 200.,"10%.1f",3);
+			W_REALIZE_PANELITEM(CDelta,
+				W_PANEL_ROW, 5, 
+				W_PANEL_COL, 0,
+				W_PANEL_LABEL, "Crossbar delta...:",
+				W_PANEL_LENGTH, 12,
+				W_PANEL_CALLBACK, 1);
+
+			W_SET_NUMERIC_VALUE(CDelta,D_C);
+			W_SET_PANELITEM_HANDLER(CDelta, "cdelta_handler");
+	
+	Type = 		W_ADD_PANELITEM(panel, W_PANEL_CHOICE, "");
+			W_REALIZE_PANELITEM(Type, 
+				W_PANEL_ROW, 6, 
+				W_PANEL_COL, 0,
+				W_PANEL_LABEL, "Distances........:",
+				W_PANEL_CHOICESTRING, "Fixed",
+				W_PANEL_CHOICESTRING, "Fitted",
+				W_PANEL_ORDINALVALUE, Typ,
+				W_PANEL_CHOICESTYLE,	W_STYLE_ROTATE,
+				W_PANEL_CALLBACK, 1);
+			W_SET_PANELITEM_HANDLER(Type, "type_selected");
+	
+	pms_home = 	SYS_GETENV("PMS_HOME");
+	
+	Direction = 	W_ADD_PANELITEM(panel, W_PANEL_CHOICE, "");
+			W_REALIZE_PANELITEM(Direction, 
+				W_PANEL_ROW, 4, 
+				W_PANEL_COL, 40,
+				W_PANEL_LABEL, "",
+				W_PANEL_CHOICEIMAGE, pms_home + 
+						"/opt/pm/EloTools/xicon/grating1.bmp",
+				W_PANEL_CHOICEIMAGE, pms_home + 
+						"/opt/pm/EloTools/xicon/grating2.bmp",
+				W_PANEL_ORDINALVALUE, Dir,
+				W_PANEL_CHOICESTYLE,	W_STYLE_ROTATE,
+				W_PANEL_CALLBACK, 1);
+			W_SET_PANELITEM_HANDLER(Direction, "direc_selected");
+
+
+	XJust = 	W_ADD_PANELITEM(panel, W_PANEL_CHOICE, "");
+			W_REALIZE_PANELITEM(XJust, 
+				W_PANEL_ROW, 7, 
+				W_PANEL_COL, 0,
+				W_PANEL_LABEL, "X-justification..:",
+				W_PANEL_CHOICESTRING, "Left",
+				W_PANEL_CHOICESTRING, "Centered",
+				W_PANEL_CHOICESTRING, "Right",
+				W_PANEL_ORDINALVALUE, XJ,
+				W_PANEL_SHOW, 1,
+				W_PANEL_CHOICESTYLE,	W_STYLE_PUSHBUTTONS,
+				W_PANEL_CALLBACK, 1);
+			W_SET_PANELITEM_HANDLER(XJust, "xjust_selected");
+	
+	YJust = 	W_ADD_PANELITEM(panel, W_PANEL_CHOICE, "");
+			W_REALIZE_PANELITEM(YJust, 
+				W_PANEL_ROW, 8, 
+				W_PANEL_COL, 0,
+				W_PANEL_LABEL, "Y-justification..:",
+				W_PANEL_CHOICESTRING, "Bottom",
+				W_PANEL_CHOICESTRING, "Centered",
+				W_PANEL_CHOICESTRING, "Top",
+				W_PANEL_ORDINALVALUE, YJ,
+				W_PANEL_SHOW, 1,
+				W_PANEL_CHOICESTYLE,	W_STYLE_PUSHBUTTONS,
+				W_PANEL_CALLBACK, 1);
+			W_SET_PANELITEM_HANDLER(YJust, "yjust_selected");
+
+	if(Typ == 1){
+			W_SET_PANELITEM_ARGS(XJust,W_PANEL_SHOW,0);
+			W_SET_PANELITEM_ARGS(YJust,W_PANEL_SHOW,0);
+	}
+	else {
+			W_SET_PANELITEM_ARGS(XJust,W_PANEL_SHOW,1);
+			W_SET_PANELITEM_ARGS(YJust,W_PANEL_SHOW,1);
+	}
+
+	return(panel);
+}
+
+done_handler(item, event_type, button_value)
+{
+	st = 0;
+	out = "";
+
+	/*	Get and check values */
+	Pid_B   = W_GET_PANELITEM_ARG(Pid1, W_PANEL_VALUE);
+	Pid_C   = W_GET_PANELITEM_ARG(Pid2, W_PANEL_VALUE);
+	
+	if(!is_pid_OK(Pid_B)) return(0);
+	if(!is_pid_OK(Pid_C)) return(0);
+
+	Marg = W_GET_NUMERIC_VALUE(Margin, st);
+	if (st != 0) { U_MESSAGE("Margins not ok !"); return(0); }
+
+	Z_C = W_GET_NUMERIC_VALUE(ZCorrect, st);
+	if (st != 0) { U_MESSAGE("Z-correction not ok !"); return(0); }
+	
+	D_B = W_GET_NUMERIC_VALUE(BDelta, st);
+	if (st != 0) { U_MESSAGE("Bearing bar delta not ok !"); return(0); }
+
+	D_C = W_GET_NUMERIC_VALUE(CDelta, st);
+	if (st != 0) { U_MESSAGE("Crossbar delta not ok !"); return(0); }
+
+	Typ = W_GET_PANELITEM_ARG(Type, W_PANEL_ORDINALVALUE);
+	Dir = W_GET_PANELITEM_ARG(Direction, W_PANEL_ORDINALVALUE);
+	
+	XJ = W_GET_PANELITEM_ARG(XJust, W_PANEL_ORDINALVALUE);
+	YJ = W_GET_PANELITEM_ARG(YJust, W_PANEL_ORDINALVALUE);
+	
+	if(PM_GET_SYSTEM_ID(SysName) < 1){
+		U_CONFIRM("Select System before Done!");
+		return(0);
+	}
+	SysId = PM_GET_SYSTEM_ID(SysName);
+
+	set_appdefs();
+
+	return(99);	/*	Terminates main loop */
+}
+
+quit_handler(item, event_type, button_value)
+{
+	U_MESSAGE("Tool canceled");
+	Stop = 1;
+	return(99);
+}
+selsys_handler(item, event_type, button_value)
+{
+	U_MESSAGE("Select system.");
+	name = PM_SELECT_SYSTEM();
+	if(ISSTRING(name)){
+		SysName = name;
+		SysId = PM_GET_SYSTEM_ID(SysName);
+	}
+	W_SET_PANELITEM_ARGS(System, W_PANEL_LABEL,"System: "+SysName);
+	
+	return(0);
+}
+selpid1_handler(item, event_type, button_value)
+{
+	U_MESSAGE("Select Bearing bar.");
+	
+	selectmask = DM_INIT_TAGREC();
+	DM_SET_TAGVAL(selectmask,"KW","*BEAM*");
+	
+	pid = DM_BROWSE_PARTCODE("",1,selectmask);
+	
+	if(is_pid_OK(pid)){
+		Pid_B = pid;
+		W_SET_PANELITEM_ARGS(Pid1, W_PANEL_VALUE,Pid_B);
+		U_MESSAGE(pid+" selected.");
+	}
+
+	DM_FREE_TAGREC(selectmask);
+	return(0);
+}
+selpid2_handler(item, event_type, button_value)
+{
+	U_MESSAGE("Select Crossbar.");
+	
+	selectmask = DM_INIT_TAGREC();
+	DM_SET_TAGVAL(selectmask,"KW","*BEAM*");
+	
+	pid = DM_BROWSE_PARTCODE("",1,selectmask);
+	
+	if(is_pid_OK(pid)){
+		Pid_C = pid;
+		W_SET_PANELITEM_ARGS(Pid2, W_PANEL_VALUE,Pid_C);
+		U_MESSAGE(pid+" selected.");
+	}
+
+	DM_FREE_TAGREC(selectmask);
+	return(0);
+}
+is_pid_OK(pid)
+{
+	if(!ISSTRING(pid)) return(0);
+	shape = DM_PARTID_DATA(pid,"SH");
+	if(shape == 60) return(1);
+	else {
+		U_CONFIRM(pid + " is not user type profile Shape 60!");
+		return(0);
+	}
+}
+pid1_handler(item, event_type, dummy)
+{
+	if (event_type == W_EVENT_ITEM_LEFT) {
+		U_MESSAGE("Bearing bar entered, value = " +
+					W_GET_PANELITEM_ARG(item, W_PANEL_VALUE));
+		return(0);
+	}
+
+	if (event_type == W_EVENT_ITEM_CHANGED) {
+		U_MESSAGE("Bearing bar changed for the first time after it was set.");
+		return(0);
+	}
+}
+
+group_name_handler(item, event_type, dummy)
+{
+	if (event_type == W_EVENT_ITEM_LEFT) {
+        name = W_GET_PANELITEM_ARG(item, W_PANEL_VALUE);
+        group_handle = PM_FIND_BY_NAME(name);
+
+        /* 如果指定的模型已经存在，则做如下处理 */
+        if (!ISINT(group_handle)){
+            U_CONFIRM("这个名字已经被使用，请重新输入");
+            W_SET_PANELITEM_ARGS(item, W_PANEL_VALUE, "未定义");
+            return(0);
+        }
+        else{
+            GroupName = name;
+      }       
+		return(0);
+	}
+}
+
+pid2_handler(item, event_type, dummy)
+{
+	if (event_type == W_EVENT_ITEM_LEFT) {
+		U_MESSAGE("Crossbar entered, value = " +
+					W_GET_PANELITEM_ARG(item, W_PANEL_VALUE));
+		return(0);
+	}
+
+	if (event_type == W_EVENT_ITEM_CHANGED) {
+		U_MESSAGE("Crossbar changed for the first time after it was set.");
+		return(0);
+	}
+}
+
+bdelta_handler(item, event_type, dummy)
+{
+	if (event_type == W_EVENT_ITEM_LEFT) {
+		st = 0;
+		value = W_GET_NUMERIC_VALUE(item, st);
+		if (st != 0) U_MESSAGE("Bearing bar delta not OK !");
+	}
+	return(0);
+}
+margin_handler(item, event_type, dummy)
+{
+	if (event_type == W_EVENT_ITEM_LEFT) {
+		st = 0;
+		value = W_GET_NUMERIC_VALUE(item, st);
+		if (st != 0) U_MESSAGE("Margin not OK !");
+	}
+	return(0);
+}
+zcorrection_handler(item, event_type, dummy)
+{
+	if (event_type == W_EVENT_ITEM_LEFT) {
+		st = 0;
+		value = W_GET_NUMERIC_VALUE(item, st);
+		if (st != 0) U_MESSAGE("Z-correction not OK !");
+	}
+	return(0);
+}
+cdelta_handler(item, event_type, dummy)
+{
+	if (event_type == W_EVENT_ITEM_LEFT) {
+		st = 0;
+		value = W_GET_NUMERIC_VALUE(item, st);
+		if (st != 0) U_MESSAGE("Crossbar delta not OK !");
+	}
+	return(0);
+}
+type_selected(item, event_type, selection)
+{
+	s = W_GET_PANELITEM_ARG(item, W_PANEL_VALUE);
+	U_MESSAGE(ITOASCII(selection + 1) + ". type (" + s + ") selected");
+	if(selection == 1){
+		W_SET_PANELITEM_ARGS(XJust,W_PANEL_SHOW,0);
+	}
+	else W_SET_PANELITEM_ARGS(XJust,W_PANEL_SHOW,1);
+	
+	if(selection == 1){
+		W_SET_PANELITEM_ARGS(YJust,W_PANEL_SHOW,0);
+	}
+	else W_SET_PANELITEM_ARGS(YJust,W_PANEL_SHOW,1);
+	return(0);	
+}
+direc_selected(item, event_type, selection)
+{
+	/* this returns the id of the selected choice image */
+	s = W_GET_PANELITEM_ARG(item, W_PANEL_ORDINALVALUE);
+	U_MESSAGE("Direction "+ITOASCII(selection + 1) + " selected");
+	return(0);
+}
+xjust_selected(item, event_type, selection)
+{
+	s = W_GET_PANELITEM_ARG(item, W_PANEL_VALUE);
+	U_MESSAGE("X-justification (" + s + ") selected");
+	return(0);
+}
+yjust_selected(item, event_type, selection)
+{
+	s = W_GET_PANELITEM_ARG(item, W_PANEL_VALUE);
+	U_MESSAGE("Y-justification (" + s + ") selected");
+	return(0);
+}
+get_appdefs()
+{
+
+	str = "";
+	s = GET_STRING_DEFAULT("PmLayout","GrBearingBar", str);
+	if(s == 0) Pid_B = str;
+	s = GET_STRING_DEFAULT("PmLayout","GrCrossBar", str);
+	if(s == 0) Pid_C = str;
+	s = GET_STRING_DEFAULT("PmLayout","GrSystemName",str);
+	if(s == 0) SysName = str;
+	
+	flo = 0.0;
+	s = GET_FLOAT_DEFAULT("PmLayout","GrZCorrection", flo);
+	if(s == 0) Z_C = flo;
+	s = GET_FLOAT_DEFAULT("PmLayout","GrMargins", flo);
+	if(s == 0) Marg = flo;
+	s = GET_FLOAT_DEFAULT("PmLayout","GrBearingDelta", flo);
+	if(s == 0) D_B = flo;
+	s = GET_FLOAT_DEFAULT("PmLayout","GrCrossDelta", flo);
+	if(s == 0) D_C = flo;
+
+	i = 0;
+	s = GET_INT_DEFAULT("PmLayout","GrXJustification",i);
+	if(s == 0) XJ = i;
+	s = GET_INT_DEFAULT("PmLayout","GrYJustification",i);
+	if(s == 0) YJ = i;
+	s = GET_INT_DEFAULT("PmLayout","GrDirection",i);
+	if(s == 0) Dir = i;
+	s = GET_INT_DEFAULT("PmLayout","GrType",i);
+	if(s == 0) Typ = i;
+	
+
+	return(0);
+}
+set_appdefs()
+{
+	SET_STRING_DEFAULT("PmLayout","GrBearingBar",Pid_B);
+	SET_STRING_DEFAULT("PmLayout","GrCrossBar",Pid_C);
+	SET_STRING_DEFAULT("PmLayout","GrSystemName",SysName);
+
+	SET_FLOAT_DEFAULT("PmLayout","GrZCorrection",Z_C);
+	SET_FLOAT_DEFAULT("PmLayout","GrMargins",Marg);
+	SET_FLOAT_DEFAULT("PmLayout","GrBearingDelta",D_B);
+	SET_FLOAT_DEFAULT("PmLayout","GrCrossDelta",D_C);
+
+	SET_INT_DEFAULT("PmLayout","GrXJustification",XJ);
+	SET_INT_DEFAULT("PmLayout","GrYJustification",YJ);
+	SET_INT_DEFAULT("PmLayout","GrDirection",Dir);
+	SET_INT_DEFAULT("PmLayout","GrType",Typ);
+
+	return(0);
+}
+get_points(x1,y1,z1,x2,y2)
+{
+	tracep = PM_NEW_TRACEP();
+	x1 = 0.0; y1 = 0.0; z1 = 0.0;
+	PM_GET_CURRENT_LOC(x1, y1, z1);
+	if(PM_GET_POINT("Digitize 1'st corner",tracep,x1,y1,z1) < 0){
+	U_MESSAGE("Digitizing cancelled");
+	return(-1);
+	}
+	PM_TRACEP_RUBBERBAND(tracep,x1,y1,z1);
+	PM_TRACEP_CREATE_ANIMATOR(tracep, "Box");
+	PM_TRACEP_SET_ANIMATOR(tracep,
+							"TYPE",  PM_ANIMATE_RSTRETCH,
+							"ORIGIN", x1, y1, z1+30,
+							"AXIS",   1, 0, 0,
+							"S_AXIS",  0, 1, 0);
+	PM_TRACEP_CURSOR(tracep, 2);	/* small cross */
+	
+	x2 = 0.0; y2 = 0.0; z2 = 0.0;
+	PM_GET_CURRENT_LOC(x2, y2, z2);
+	if(PM_GET_POINT("Digitize 2'nd corner",tracep,x2,y2,z2) < 0){
+	U_MESSAGE("Digitizing cancelled");
+	return(-1);
+	}
+
+	if(fleq(x1,x2,100) | fleq(y1,y2,100)){
+		U_MESSAGE("Minimum area is 100mm x 100mm.");
+		return(-1);
+	}
+	if(x1 > x2){
+		tmp = x1; x1 = x2; x2 = tmp;
+	}
+	if(y1 > y2){
+		tmp = y1; y1 = y2; y2 = tmp;
+	}
+	return(0);
+}
+margin_to_points(x1,y1,x2,y2)
+{
+	x1 = x1 + Marg;
+	x2 = x2 - Marg;
+	y1 = y1 + Marg;
+	y2 = y2 - Marg;
+	
+	if(x2 < x1+100){
+		U_MESSAGE("With Margins area is too small");
+		return(-1);
+	}
+	if(y2 < y1+100){
+		U_MESSAGE("With Margins area is too small");
+		return(-1);
+	}
+	return(0);
+}

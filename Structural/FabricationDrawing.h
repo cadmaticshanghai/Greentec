@@ -1,30 +1,5 @@
-/*define tag of model group*/
-#define	UnitDescription         "~G6"       /* 舾装件单元的描述 */
-#define	PlanningUnit            "~G2"       /* 舾装件所属托盘 */
-#define	SurfaceTreatment        "U68"       /* 舾装件表面处理 */
-#define	DrawingName             "U66"       /* 舾装件制造图图名 */
-#define	DrawingNo               "U58"       /* 舾装件制造图图号 */
-#define	BlockName               ".m1"       /* 舾装件所属分段 */
-#define	UnitMaterial            "!04"       /* 舾装件材料 */
-
-/*define tag of model part*/
-#define	Tag_PartNo                   "~P0"			/*零件编号*/
-#define	Tag_Description              "DE"			/*零件描述（名称） - 系统默认属性*/
-#define	Tag_TypeSize                 "DD"			/*零件规格 - 系统默认属性*/
-#define	Tag_Standard                 "ST"			/*零件标准 - 系统默认属性*/
-#define	Tag_Materail                 "MC"			/*零件材料 - 系统默认属性*/
-#define	Tag_Weight                   "MAS"			/*零件重量 - 系统默认属性*/
-#define	Tag_Unit                     "~04"			/*零件标准*/
-#define	Tag_MaterialCode             "~P1"			/*零件物资编码*/ 
-#define	Tag_Remark                   "U83"			/*零件备注*/
-
-/*Define GDL for Structural Component tag */
-#define	Tag_StructuralComponent_Description		".dG"	/*舾装零件描述（名称） - 系统默认属性*/
-#define	Tag_StructuralComponent_TypeSize		"=07"	/*舾装零件规格*/
-#define	Tag_StructuralComponent_Standard		"=04"	/*舾装零件标准*/
-#define	Tag_StructuralComponent_Material		"=02"	/*舾装零件材质*/
-#define	Tag_StructuralComponent_Unit			"=03"	/*舾装零件单位*/
-#define	Tag_StructuralComponent_PaintingArea	"=03"	/*舾装零件油漆面积*/
+/* deinfe tag for model group*/
+#define	Tag_DrawingName             "U76"       /*舾装件制造图图名*/
 
 /* define drawing tag name */ 
 #define	Tag_Drawing_ShipNumber      "~D1"      /* 船号 */
@@ -35,11 +10,11 @@
 #define	Tag_Drawing_UnitName        "G04"      /* 舾装件名称 */
 
 /*尺寸标注设置*/
-global int		DimLinePen = 1;
+global int			DimLinePen = 1;
 global string		DimLineWidthName = "0.25";
-global int		DimLineColor = 1;
+global int			DimLineColor = 1;
 global string		DimLineColorName = "red";
-global int		DimLineLayer = 104;
+global int			DimLineLayer = 104;
 global string		DimLineLayerName = "PM_dim_layer";
 global float		DimTextHeight = 2.5;
 global float		DimTextWidth = 1.5;
@@ -47,8 +22,8 @@ global float		DimTextSpc = 0.5;
 global float		DimSymHeight = 2.0;
 
 /*define tag of drawing*/
-#define  DrawingStatus   "U39"
-#define  CreationTime    ".c6"
+#define  Tag_DrawingStatus   "U39"
+#define  Tag_CreationTime    ".c6"
 
 /* define view position*/
 global int	View1_X = 85, View1_Y = 200;
