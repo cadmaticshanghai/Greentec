@@ -582,7 +582,7 @@ Pick_Structural_Group(string prompt)
     flag = 1;
     while(flag){
         tmp = 0;
-        picked_object_handle = PM_PICK_OBJECT(prompt, tmp, "STRUCTCMP","BEAM","STANDCMP","PIPE");
+        picked_object_handle = PM_PICK_OBJECT(prompt, tmp, "STRUCTCMP","BEAM","STANDCMP","PIPE","EQUIPMENT");
         if (!ISINT(picked_object_handle)){
             /*get group handle of picked object*/
             group_handle = PM_GET_OBJECT_GROUP(picked_object_handle,7);
@@ -613,7 +613,7 @@ Pick_Structural_Part(string prompt)
     flag = 1;
     while(flag){
         nth = 0;
-        picked_object_handle = PM_PICK_OBJECT(prompt, nth, "STRUCTCMP","BEAM","STANDCMP","PIPE");
+        picked_object_handle = PM_PICK_OBJECT(prompt, nth, "STRUCTCMP","BEAM","STANDCMP","PIPE","EQUIPMENT");
         if (!ISINT(picked_object_handle)){
 			obj_type = PM_GET_OBJDATA(picked_object_handle,0,MMT_TAG_OBJTYPE);
 			if(obj_type == "3"){			
@@ -629,6 +629,45 @@ Pick_Structural_Part(string prompt)
     }
 }
 
+/*let user pick one or more structural part in active view
+**and check if it is in the passed model set
+**if success, return part set handle, otherwise return 0
+*/
+Pick_Multi_Structural_Part(string prompt, handle model_set, handle parts)
+{
+	parts = PM_INIT_SET();
+	objects = PM_DEFINE_SET(prompt,1,"STRUCTCMP","BEAM","STANDCMP","PIPE","EQUIPMENT");
+	if(ISINT(objects)){
+		return(-1);
+	}
+	
+	find = 0;
+	part_number = PM_NR_MEMBERS_IN_SET(objects);
+	for(i=0;i<part_number;i=i+1;){
+		part = PM_GET_MEMBER_IN_SET(objects,i);
+		part_index = PM_FIND_OBJECT_FROM_SET(part, model_set);
+		if(part_index >=0){
+			PM_ADD_OBJECT_TO_SET(part,parts);			
+		}
+		else{
+			find = 1;
+			PM_HIGHLIGHT_OBJECT(part,0,0);
+		}
+	}
+	
+	if(find){		
+		U_CONFIRM("选择的全部或者部分零件不属于当前舾装件");
+	}
+	
+	part_number = PM_NR_MEMBERS_IN_SET(parts);
+	if(part_number > 0){
+		return(0);
+	}
+	else{
+		return(-1);
+	}	
+}
+
 /*let user pick structural parts that doesn't belong to any group in active view
 **if success, return part set, otherwise return 0
 */
@@ -639,7 +678,7 @@ Pick_Free_Structural_Parts(string prompt)
     while(flag){
         nth = 0;
 		check = 0;
-        picked_object_handle = PM_PICK_OBJECT(prompt, nth, "STRUCTCMP","BEAM","STANDCMP","PIPE");
+        picked_object_handle = PM_PICK_OBJECT(prompt, nth, "STRUCTCMP","BEAM","STANDCMP","PIPE","EQUIPMENT");
         if (!ISINT(picked_object_handle)){
 			group_handle = PM_GET_OBJECT_GROUP(picked_object_handle,7);
             if (ISINT(group_handle)){
@@ -871,15 +910,23 @@ Get_Part_Unit(obj_h)
 {
     nth = 0;
     obj_type = PM_GET_OBJDATA(obj_h,nth,MMT_TAG_OBJTYPE);
-    if(obj_type == "2"){
+	part_id = PM_GET_OBJDATA(obj_h,nth,MMT_TAG_PARTID);
+	qty = PM_GET_OBJDATA(obj_h,nth,MMT_TAG_BOM_QUANTITY);
+	gt = DM_PARTID_DATA(part_id,"GT");
+	/*equipment, standard part, structural component, pipe part beside tube*/
+    if(obj_type == "1" | obj_type == "2" | (obj_type == "4" & ISSTRING(qty)) | 
+	(obj_type == "3" & ISSTRING(qty)) | (obj_type == "10" & ISSTRING(qty))){
         return("PCS");
     }
-    else if(obj_type == "4"){
+	/* PLATE */
+    else if(obj_type == "4" & ISINT(qty)){
         return("m2");
     }
+	/*BEAM*/
     else if(obj_type == "5"){
         return("m");
     }
+	/*OTHER*/
     else{
         return("PCS");
     } 
@@ -889,12 +936,18 @@ Get_Part_Surface_Area(obj_h)
 {
     nth = 0;
     obj_type = PM_GET_OBJDATA(obj_h,nth,MMT_TAG_OBJTYPE);
-    /*if object is standard component*/
-    if(obj_type == "2"){
+	part_id = PM_GET_OBJDATA(obj_h,nth,MMT_TAG_PARTID);
+	qty = PM_GET_OBJDATA(obj_h,nth,MMT_TAG_BOM_QUANTITY);
+	gt = "";
+	if(ISSTRING(part_id)){
+		gt = DM_PARTID_DATA(part_id,"GT");
+	}
+    /*if object is equopment, standard component, */
+    if(obj_type == "1" | obj_type == "2" | obj_type == "3" | obj_type == "10" | (obj_type == "4" & ISSTRING(qty))){
         return(0.00);
     }
-    /* if object is structural component*/
-    else if(obj_type == "4"){
+    /* if object is structural plate*/
+    else if(obj_type == "4" & ISINT(qty)){
         area = Calculate_Plate_Surface_Area(obj_h);
         return(area);      
     }
