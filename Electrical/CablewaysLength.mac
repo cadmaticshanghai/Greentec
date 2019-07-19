@@ -1,0 +1,42 @@
+/* $Id: ProductionInformation.mac,v1.0.0 2018/01/29 Wallis.liu $ */
+
+/*
+**  This script use to manage information of structural model
+*/
+
+#include "include/dmutil.h"
+#include "include/win.h"
+#include "include/win_panel.h"
+#include "include/PmMgeTags.h"
+#include "include/pm.h"
+#include "include/pm_core_tags.h"
+#include "include/array.mac"
+#include "include/cos.h"
+#include "include/geoutils.h"
+#include "include/quants.h"
+#include "include/dm_cos_schema.h"
+
+#include "$GreenTec/Include/license.h"
+
+main()
+{
+    if(!license()){
+        return(0);
+    }
+	objects = PM_DEFINE_SET("请选择电缆通道",1,"CABLETRAY");
+	if(!ISINT(objects)){
+		part_number = PM_NR_MEMBERS_IN_SET(objects);
+		length = 0;
+		nth = 0;
+		for(i=0;i<part_number;i=i+1;){
+			part = PM_GET_MEMBER_IN_SET(objects,i);
+			length = length + 1.0 * PM_GET_OBJDATA(part,nth,"axl");		
+		}
+		U_CONFIRM("电缆通道总长度为:" + STRINGTERM(FTOASCII(length),"."));
+		U_MESSAGE("电缆通道总长度为:" + STRINGTERM(FTOASCII(length),"."));
+	}
+	else{
+		U_CONFIRM("未选择任何电缆通道");
+	}
+	return(0);
+}
