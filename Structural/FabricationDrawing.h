@@ -10,11 +10,11 @@
 #define	Tag_Drawing_UnitName        "G04"      /* 舾装件名称 */
 
 /*尺寸标注设置*/
-global int			DimLinePen = 1;
+global int		DimLinePen = 1;
 global string		DimLineWidthName = "0.25";
-global int			DimLineColor = 1;
+global int		DimLineColor = 1;
 global string		DimLineColorName = "red";
-global int			DimLineLayer = 104;
+global int		DimLineLayer = 104;
 global string		DimLineLayerName = "PM_dim_layer";
 global float		DimTextHeight = 2.5;
 global float		DimTextWidth = 1.5;
@@ -56,18 +56,17 @@ global handle Mto_Label_Table;
 global int Mto_Number = 0;
 
 /*零件表相关设置*/
-global int Mto_Table_Orign_X = 213.25;
-global int Mto_Table_Orign_Y = 16.93;
-global int Mto_Table_W = 200.3;
-global int Mto_Table_H = 4.73;
-global int Mto_Table_Column1_W = 15.97;
-global int Mto_Table_Column2_W = 64.77;
-global int Mto_Table_Column3_W = 19.92;
-global int Mto_Table_Column4_W = 29.91;
-global int Mto_Table_Column5_W = 22.42;
-global int Mto_Table_Column6_W = 22.44;
-global int Mto_Table_Column7_W = 24.9;
-global string Mto_Table_Direction = "Up"; /* Down - 从上向下 Up - 从下向上*/
+global int Mto_Table_Orign_X = 213.5;
+global int Mto_Table_Orign_Y = 17;
+global int Mto_Table_W = 200.5;
+global int Mto_Table_H = 4.5;
+global int Mto_Table_Column1_W = 16;
+global int Mto_Table_Column2_W = 65.5;
+global int Mto_Table_Column3_W = 20;
+global int Mto_Table_Column4_W = 30;
+global int Mto_Table_Column5_W = 22;
+global int Mto_Table_Column6_W = 22;
+global int Mto_Table_Column7_W = 25;
 global int Mto_Table_Line_Type = 0;
 global int Mto_Table_Line_Colour = 1;
 global int Mto_Table_Pattern_Length = 0;
