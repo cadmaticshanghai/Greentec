@@ -8,6 +8,10 @@
 #define	Tag_Drawing_TotalPage       "~D4"      /* 总页数 */
 #define	Tag_Drawing_ModuleName      "~G6"      /* 模型名 */
 #define	Tag_Drawing_UnitName        "G04"      /* 舾装件名称 */
+#define	Tag_Drawing_TotalWeight		"~D9"      /* 舾装件重量 */
+
+/* 项目属性 */
+#define	Tag_Pro_ShipNumber			"Uf6"		/* 项目号 */
 
 /*尺寸标注设置*/
 global int		DimLinePen = 1;
@@ -92,5 +96,63 @@ set_column_title(handle wobj, column_titles, column_number)
 			return(0);
 		}
 	}
+	return(0);
+}
+
+Get_Drawing_View_Scale(view_scale)
+{
+	scale_number = 35;
+	view_scales = A_ALLOC(scale_number);
+	A_PUT(view_scales,0,0.02);
+	A_PUT(view_scales,1,0.025);
+	A_PUT(view_scales,2,0.04);
+	A_PUT(view_scales,3,0.05);
+	A_PUT(view_scales,4,0.067);
+	A_PUT(view_scales,5,0.1);
+	A_PUT(view_scales,6,0.2);
+	A_PUT(view_scales,7,0.4);
+	A_PUT(view_scales,8,0.5);
+	A_PUT(view_scales,9,0.67);
+	A_PUT(view_scales,10,1);
+	A_PUT(view_scales,11,1.5);
+	A_PUT(view_scales,12,2);
+	A_PUT(view_scales,13,2.5);
+	A_PUT(view_scales,14,3);
+	A_PUT(view_scales,15,4);
+	A_PUT(view_scales,16,5);
+	A_PUT(view_scales,17,6);
+	A_PUT(view_scales,18,7.5);
+	A_PUT(view_scales,19,10);
+	A_PUT(view_scales,20,15);
+	A_PUT(view_scales,21,20);
+	A_PUT(view_scales,22,25);
+	A_PUT(view_scales,23,30);
+	A_PUT(view_scales,24,40);
+	A_PUT(view_scales,25,50);
+	A_PUT(view_scales,26,60);
+	A_PUT(view_scales,27,75);
+	A_PUT(view_scales,28,100);
+	A_PUT(view_scales,29,125);
+	A_PUT(view_scales,30,150);
+	A_PUT(view_scales,31,200);
+	A_PUT(view_scales,32,250);
+	A_PUT(view_scales,33,300);
+	A_PUT(view_scales,34,400);
+	for(i=0;i<scale_number;i=i+1;){
+		value = A_GET(view_scales,i);
+		if(view_scale <= value){
+			value1 = A_GET(view_scales,i-1);
+			if(view_scale - value1 < value - view_scale){
+				view_scale = value1;
+			}
+			else{
+				view_scale = value;
+			}
+			A_FREE(view_scales);
+			return(0);
+		}
+	}
+	view_scale = 400;
+	A_FREE(view_scales);
 	return(0);
 }

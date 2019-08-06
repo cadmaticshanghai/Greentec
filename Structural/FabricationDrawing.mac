@@ -151,7 +151,13 @@ set_default()
 	if(st == 0){
 		W_SET_PANELITEM_ARGS(Drawing_Form, W_PANEL_VALUE, drawing_form);	  
 		Drawing_Form_Name = drawing_form;
-	}   
+	}
+
+	pro_number = Get_Project_Attribute(Tag_Pro_ShipNumber);
+	if(ISSTRING(pro_number)){
+		W_SET_PANELITEM_ARGS(Pro_Number,W_PANEL_VALUE,pro_number);	
+		
+	}	
 }
 
 /*
@@ -833,7 +839,7 @@ create_panel_upperpart(mainform)
 									W_PANEL_COL,         0,
 									W_PANEL_LABEL,       "工程号:   ",
 									W_PANEL_LENGTH,      15,
-									W_PANEL_VALUE,       "N1026",
+									W_PANEL_VALUE,       "",
 									W_PANEL_CALLBACK,    3);
    
 	Dra_Number = W_ADD_PANELITEM(panel_upperpart, W_PANEL_FILL, "Dra_Number");
@@ -1171,81 +1177,83 @@ create_command(mainform)
 
 delete_drawing_handler(item, event_type, button_value)
 {
-	units_number = PM_NR_MEMBERS_IN_SET(Selected_Objects);	
-	if (units_number <= 0){
-		U_CONFIRM("请先选择基座");
-		return(0);
-	}  
+    units_number = PM_NR_MEMBERS_IN_SET(Selected_Objects);	
+    if (units_number <= 0){
+        U_CONFIRM("请先选择基座");
+        return(0);
+    }  
 
-	sel = A_ALLOC(2);
-	A_PUT(sel,0,"保留最新版本");
-	A_PUT(sel,1,"删除所有版本");
-	si = 1;
-	res = DM_CALL_SCRIPT("macro/Select.mac","U_Select",
-		"请选择删除模式",2,sel,si);
-	A_FREE(sel);
-   
-   if(res == -1){
-      return(0);      
-   }
-   else if(res == 0){
-   	for(i=0;i<units_number;i=i+1;){   	   
-      	unit_handle = PM_GET_MEMBER_IN_SET(Selected_Objects,i);
-      	drawing_name = Get_Attribute_Value(unit_handle,Tag_DrawingName);
-         if(ISSTRING(drawing_name) & drawing_name != "Unset"){          
-         	current_version = String_To_Int(SUBSTRING(SEARCH(drawing_name,"-SK"),3));      	
-         	for(k=0;k<current_version;k=k+1;){
-         	   drawing_name = STRINGTERM(drawing_name,"-SK") + "-SK" + ITOASCII(k);
-         	   doc_guid = "";
-         	   res = PM_FIND_DRAWING_WITH_NAME(drawing_name,doc_guid);
-         	   if(doc_guid != ""){
-         	      res = PM_DELETE_DRAWING(drawing_name);
-         	      if(res == 0){
-         	         mess = "图形<" + drawing_name + ">已经被删除";
-         	         U_MESSAGE(mess);
-         	      }
-         	      else{
-         	         prompt_error(drawing_name,res);
-         	      }      	      
-         	   }
-         	} 
-         }  	
-      }      
-   }
-   else if(res == 1){  	   
-   	for(i=0;i<units_number;i=i+1;){   	   
-      	unit_handle = PM_GET_MEMBER_IN_SET(Selected_Objects,i);
-      	drawing_name = Get_Attribute_Value(unit_handle,Tag_DrawingName);
-         if(ISSTRING(drawing_name) & drawing_name != "Unset"){
-         	current_version = String_To_Int(SUBSTRING(SEARCH(drawing_name,"-SK"),3));   	
-         	for(k=0;k<=current_version;k=k+1;){
-         	   drawing_name = STRINGTERM(drawing_name,"-SK") + "-SK" + ITOASCII(k);
-         	   doc_guid = "";
-         	   res = PM_FIND_DRAWING_WITH_NAME(drawing_name,doc_guid);
-         	   if(doc_guid != ""){
-         	      res = PM_DELETE_DRAWING(drawing_name);
-         	      if(res == 0){
-         	         mess = "图形<" + drawing_name + ">已经被删除";
-         	         U_MESSAGE(mess);
-         	      }
-         	      else{
-         	         prompt_error(drawing_name,res);
-         	      }      	      
-         	   }
-         	} 
-         } 
-         res = Set_Attribute_Value(unit_handle,Tag_DrawingName,"Unset");         
-         /* display drawing name in grid if it is existed*/
-         id = find_model_grid_id(unit_handle);
-         if(id != -1){
-            W_SET_WINDOW_ARGS(DisplayGrid,W_LISTW_FINDID,id);
-            row = W_GET_WINDOW_ARG(DisplayGrid,W_LISTW_ROW);
-            W_SET_WINDOW_ARGS(DisplayGrid, W_LISTW_ROW, row, W_LISTW_COLUMN, 2, W_LISTW_STRING, "Unset");
-         }         
-      }                
-   }
-   PM_SAVE(0,1,1);   
-   return(0);
+    sel = A_ALLOC(2);
+    A_PUT(sel,0,"保留最新版本");
+    A_PUT(sel,1,"删除所有版本");
+    si = 1;
+    res = DM_CALL_SCRIPT("macro/Select.mac","U_Select",
+    "请选择删除模式",2,sel,si);
+    A_FREE(sel);
+
+    if(res == -1){
+        return(0);      
+    }
+    else if(res == 0){
+        for(i=0;i<units_number;i=i+1;){   	   
+            unit_handle = PM_GET_MEMBER_IN_SET(Selected_Objects,i);
+            drawing_name = Get_Attribute_Value(unit_handle,Tag_DrawingName);
+            if(ISSTRING(drawing_name) & drawing_name != "Unset"){          
+                current_version = String_To_Int(SUBSTRING(SEARCH(drawing_name,"-V"),2));      	
+                for(k=0;k<current_version;k=k+1;){
+                    drawing_name = STRINGTERM(drawing_name,"-V") + "-V" + ITOASCII(k);
+                    doc_guid = "";
+                    res = PM_FIND_DRAWING_WITH_NAME(drawing_name,doc_guid);
+                    if(doc_guid != ""){
+                        res = PM_DELETE_DRAWING(drawing_name);
+                        if(res == 0){
+                            mess = "图形<" + drawing_name + ">已经被删除";
+                            U_MESSAGE(mess);
+                        }
+                        else{
+                            prompt_error(drawing_name,res);
+                        }      	      
+                    }
+                } 
+            }  	
+        }      
+    }
+    else if(res == 1){  	   
+        for(i=0;i<units_number;i=i+1;){   	   
+            unit_handle = PM_GET_MEMBER_IN_SET(Selected_Objects,i);
+            drawing_name = Get_Attribute_Value(unit_handle,Tag_DrawingName);
+            TRAP();
+            if(ISSTRING(drawing_name) & drawing_name != "Unset"){
+                current_version = String_To_Int(SUBSTRING(SEARCH(drawing_name,"-V"),2));   	
+                for(k=0;k<=current_version;k=k+1;){
+                    drawing_name = STRINGTERM(drawing_name,"-V") + "-V" + ITOASCII(k);
+                    doc_guid = "";
+                    res = PM_FIND_DRAWING_WITH_NAME(drawing_name,doc_guid);
+                    if(doc_guid != ""){
+                        res = PM_DELETE_DRAWING(drawing_name);
+                        if(res == 0){
+                            mess = "图形<" + drawing_name + ">已经被删除";
+                            U_MESSAGE(mess);
+                        }
+                        else{
+                            prompt_error(drawing_name,res);
+                        }      	      
+                    }
+                } 
+            } 
+            res = Set_Attribute_Value(unit_handle,Tag_DrawingName,"Unset");         
+            /* display drawing name in grid if it is existed*/
+            id = find_model_grid_id(unit_handle);
+            if(id != -1){
+                W_SET_WINDOW_ARGS(DisplayGrid,W_LISTW_FINDID,id);
+                row = W_GET_WINDOW_ARG(DisplayGrid,W_LISTW_ROW);
+                W_SET_WINDOW_ARGS(DisplayGrid, W_LISTW_ROW, row, W_LISTW_COLUMN, 4, W_LISTW_STRING, "Unset");
+            }   
+            
+        }                
+    }
+    PM_SAVE(0,1,1);   
+    return(0);
 }
 
 prompt_error(drawing_name,res)
@@ -1674,7 +1682,12 @@ generate_drawing()
 	PM_TERMINATE_PAGE_ANNOTATION(1);
 	/*set drawing title information*/
 	set_header_field();
-
+	view_h = A_GET(View_Handles,3);
+	
+	/* add label */
+	/*path = SYS_GETENV("PMS_HOME") + "/opt/pm/EloTools/macro/AutoLabeling.mac";
+	PM_CALL_SCRIPT(path,"AutoLabeling","~P0", "舾装零件编号", "舾装零件编号", 101, 2, 7, 2.5, 0.0, 0.0, 0, 0, 1);
+	*/
 	/*save drawing*/ 
 	res = PM_SAVE_ACTIVE_DRW();
 	if(res != 0){
@@ -1720,7 +1733,11 @@ set_header_field()
     }
     
     drawing_number = W_GET_PANELITEM_ARG(Dra_Number,W_PANEL_VALUE);
-    if(drawing_number != ""){
+	if(drawing_number == "*"){
+		nth = 0;
+		drawing_number = PM_GET_OBJDATA(Model_Handle, nth, Tag_FabDrawingNo);
+	}
+    if(ISSTRING(drawing_number)){
         DM_SET_TAGVAL(page_header_rec,Tag_Drawing_DrawingNumber,drawing_number);   
     }    
        
@@ -1740,7 +1757,18 @@ set_header_field()
             DM_SET_TAGVAL(page_header_rec,Tag_Drawing_TotalPage,total_page);
         } 
     }
-
+	
+	/* 重量信息 */
+    nth = 0;
+    weight = 1.0 * PM_GET_OBJDATA(Model_Handle, nth, Tag_TotalWeight);
+	if(weight == 0){	
+		weight = get_model_weight();
+	}
+	weight_s = "";
+	S_PRINTF(weight_s, "%.2f", weight);
+	DM_SET_TAGVAL(page_header_rec,Tag_Drawing_TotalWeight,weight_s);
+	
+	
     /* 模型名称 */
     nth = 0;
     unit_name = PM_GET_OBJDATA(Model_Handle, nth, MMT_TAG_OBJNAME);
@@ -1748,6 +1776,15 @@ set_header_field()
         DM_SET_TAGVAL(page_header_rec,Tag_Drawing_ModuleName,unit_name);
     }
 
+    /* 油漆面积 - 表面积 */
+	/*
+    nth = 0;
+    area = 1.0 * PM_GET_OBJDATA(Model_Handle, nth, Tag_SurfaceArea);
+	area_s = "";
+	S_PRINTF(area_s, "%.2f", area);
+	DM_SET_TAGVAL(page_header_rec,Tag_Drawing_ModuleName,area_s);
+	*/
+	
     /* 舾装件名称 */
     DM_SET_TAGVAL(page_header_rec,Tag_Drawing_UnitName,"设备基座");
     
@@ -1865,6 +1902,7 @@ get_model_view_para()
    zz = length_z*length_z;
    length = SQRT(xx+yy+zz);
    View_Scale = length/View_Size;
+   Get_Drawing_View_Scale(View_Scale);
    
    free_2darray(View_Info);
    View_Info = alloc_2darray(4,15);
@@ -2208,12 +2246,12 @@ get_mto_table()
 
 	/*初始化材料表全局数组*/
 	free_2darray(Mto_Table);
-	Mto_Table = alloc_2darray(mto_number - 1,6);
+	Mto_Table = alloc_2darray(mto_number - 1,7);
 	Mto_Number = mto_number - 1;
 
 	/*将材料表信息从临时数组拷贝到全局数组*/
 	for (n = 0; n < mto_number - 1; n = n + 1;){
-		for(m = 0; m < 6; m = m + 1){
+		for(m = 0; m < 7; m = m + 1){
 			info = get_2darray(temp_mto,n,m);
 			put_2darray(Mto_Table, n, m, info);
 		}
@@ -2228,7 +2266,8 @@ get_mto_table()
 			s4 = FTOASCII(get_2darray(Mto_Table,i,3));
 			s5 = FTOASCII(get_2darray(Mto_Table,i,4));
 			s6 = FTOASCII(get_2darray(Mto_Table,i,5));
-			mess = s1 + ";" + s2 + ";" + s3 + ";" + s4 + ";" + s5 + ";" + s6 ;
+			s7 = get_2darray(Mto_Table,i,6);
+			mess = s1 + ";" + s2 + ";" + s3 + ";" + s4 + ";" + s5 + ";" + s6 + ";" + s7;
 			U_MESSAGE(mess);
 		}
 	}
@@ -2515,7 +2554,7 @@ get_steel_plate_info(part,part_no,temp_mto,mto_number)
             put_2darray(temp_mto,part_index,2,"钢");
         }        
         /*4. 数量*/
-        area = 1.0 * PM_GET_OBJDATA(part,nth,"_PA");
+        area = 1.0 * PM_GET_OBJDATA(part,nth,"_PA") / 1000000.0;
         put_2darray(temp_mto,part_index,3,area);        
         /*5. 单重*/
         unit_weight = DM_PARTID_DATA(part_id,"DC1");
@@ -2545,7 +2584,7 @@ get_steel_plate_info(part,part_no,temp_mto,mto_number)
     }
     else{
         /*4. 数量*/
-        area = get_2darray(temp_mto,part_index,3) + 1.0 * PM_GET_OBJDATA(part,nth,"_PA");
+        area = get_2darray(temp_mto,part_index,3) + 1.0 * PM_GET_OBJDATA(part,nth,"_PA") / 1000000.0;
         put_2darray(temp_mto,part_index,3,area); 
         /*6. 总重*/ 
         weight = get_2darray(temp_mto,part_index,5) + 1.0 * PM_GET_OBJDATA(part,nth,MMT_TAG_MASS);
@@ -2738,6 +2777,9 @@ draw_mto_table()
 		x = x + Mto_Table_Column6_W;
 		y = Mto_Table_Orign_Y + Mto_Table_H * i + offset;
 		text = get_2darray(Mto_Table,i,6);
-		DW_TEXT(x, y, text);
+		if(ISSTRING(text)){
+			DW_TEXT(x, y, text);
+		}
+		
 	}
 }
