@@ -71,12 +71,12 @@ global	string	Proj_Number = "";
 global	string	Proj_ClassName = "";
 global	float		Bending_Radius = 0.0;
 
-global	string	Icon_My_Check_Out = "$Cadmatic_Toolkit/ICONS/mycheckout.ico";
-global	string	Icon_Other_Check_Out = "$Cadmatic_Toolkit/ICONS/checkout.ico";
-global	string	Icon_Local_Server = "$Cadmatic_Toolkit/ICONS/local_server.ico";
-global	string	Icon_Replica_Check_Out = "$Cadmatic_Toolkit/ICONS/replica_checkout.ico";
-global	string	Icon_Replica_Server = "$Cadmatic_Toolkit/ICONS/replica.ico";
-global	string	Icon_Error = "$Cadmatic_Toolkit/ICONS/error.ico";
+global	string	Icon_My_Check_Out = "$GreenTec/ICONS/mycheckout.ico";
+global	string	Icon_Other_Check_Out = "$GreenTec/ICONS/checkout.ico";
+global	string	Icon_Local_Server = "$GreenTec/ICONS/local_server.ico";
+global	string	Icon_Replica_Check_Out = "$GreenTec/ICONS/replica_checkout.ico";
+global	string	Icon_Replica_Server = "$GreenTec/ICONS/replica.ico";
+global	string	Icon_Error = "$GreenTec/ICONS/error.ico";
 global	handle	Access_List;
 
 /*
@@ -474,7 +474,6 @@ model_browsing_handler(item, event_type, button_value)
 	PM_PICK_OBJECT("浏览模型",nth_part);
 	W_MAP_FRAME(MainWindow);
 }
-
 
 search_objects(item, event_type, button_value)
 {
@@ -2962,7 +2961,6 @@ sort_spool_branch()
 		}
 
 		/*修正支管末端的套管问题（standard component)*/
-		/*
 		for(i=0;i<pipe_number;i=i+1){
 			branch_sequ = get_2darray(mark,i,0);
 			if(branch_sequ == 10000){
@@ -2970,7 +2968,7 @@ sort_spool_branch()
 				branch_number = branch_number + 1;
 			}
 		}
-		*/
+
 	
 
 		/* 修正主管末端的套管问题(主管末端带一个标准零件的套管的时候套管会丢失)*/
@@ -3793,14 +3791,14 @@ find_in_parts(spool_parts,part_number,pipe)
 /*判断Standard Component是否为SET-ON类型的零件*/
 is_on_surface(pipe)
 {
-   connection_type1 = PM_GET_CONPNT_DATA(pipe,1,"ft1");
-   connection_type2 = PM_GET_CONPNT_DATA(pipe,2,"ft1");
-   if(connection_type1 == "Auxiliary point" & connection_type2 == "Auxiliary point"){
-      return(1);
-   }
-   else{
-      return(0);
-   }
+	connection_type1 = PM_GET_CONPNT_DATA(pipe,1,"ft1");
+	connection_type2 = PM_GET_CONPNT_DATA(pipe,2,"ft1");
+	if(connection_type1 == "Auxiliary point" & connection_type2 == "Auxiliary point"){
+		return(1);
+	}
+	else{
+		return(0);
+	}
 }
 
 /*判断Standard Component是否为测深管的透气孔零件*/
