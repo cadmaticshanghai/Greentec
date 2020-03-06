@@ -16,14 +16,14 @@
 #include "include/quants.h"
 #include "include/dm_cos_schema.h"
 
-#include "$GreenTec/Piping/PspoolProdInfo.h"
-#include "$GreenTec/Include/Math_Utility.h"
-#include "$GreenTec/Include/Common_Utility.h"
-#include "$GreenTec/Include/String_Utility.h"
-#include "$GreenTec/Include/Grid_Utility.h"
-#include "$GreenTec/Include/Structural_Utility.h"
-#include "$GreenTec/Include/Array_ext.h"
-#include "$GreenTec/Include/license.h"
+#include "$Everglory/Piping/PspoolProdInfo.h"
+#include "$Everglory/Include/Math_Utility.h"
+#include "$Everglory/Include/Common_Utility.h"
+#include "$Everglory/Include/String_Utility.h"
+#include "$Everglory/Include/Grid_Utility.h"
+#include "$Everglory/Include/Structural_Utility.h"
+#include "$Everglory/Include/Array_ext.h"
+#include "$Everglory/Include/license.h"
 
 /*
 **It seem that there isn't method to get the size of a array, define a global var to store the number of production information
@@ -50,12 +50,12 @@ global handle MainWindow;
 global int    Maximum_Object_Number = 1000;
 
 global handle W_Search_Object;
-global string Icon_My_Check_Out = "$Cadmatic_Toolkit/ICONS/mycheckout.ico";
-global string Icon_Other_Check_Out = "$Cadmatic_Toolkit/ICONS/checkout.ico";
-global string Icon_Local_Server = "$Cadmatic_Toolkit/ICONS/local_server.ico";
-global string Icon_Replica_Check_Out = "$Cadmatic_Toolkit/ICONS/replica_checkout.ico";
-global string Icon_Replica_Server = "$Cadmatic_Toolkit/ICONS/replica.ico";
-global string Icon_Error = "$Cadmatic_Toolkit/ICONS/error.ico";
+global string Icon_My_Check_Out = "$Everglory/ICONS/mycheckout.ico";
+global string Icon_Other_Check_Out = "$Everglory/ICONS/checkout.ico";
+global string Icon_Local_Server = "$Everglory/ICONS/local_server.ico";
+global string Icon_Replica_Check_Out = "$Everglory/ICONS/replica_checkout.ico";
+global string Icon_Replica_Server = "$Everglory/ICONS/replica.ico";
+global string Icon_Error = "$Everglory/ICONS/error.ico";
 global handle Access_List;
 
 /*

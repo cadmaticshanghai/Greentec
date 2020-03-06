@@ -19,7 +19,7 @@ check_license()
 
 check_date()
 {
-    year = 2019;
+    year = 2030;
     month = 12;
     date = 31;
     

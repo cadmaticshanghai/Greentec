@@ -26,13 +26,13 @@
 #include "include/pi_math.mac"
 #include "include/pi.h"
 
-#include "$GreenTec/Piping/PspoolProdInfo.h"
-#include "$GreenTec/Piping/PipeSketchGenerator.h"
-#include "$GreenTec/Include/Common_Utility.h"  
-#include "$GreenTec/Include/String_Utility.h"
-#include "$GreenTec/Include/Drawing_Utility.h"
-#include "$GreenTec/Include/Grid_Utility.h"
-#include "$GreenTec/Include/license.h"
+#include "$Everglory/Piping/PspoolProdInfo.h"
+#include "$Everglory/Piping/PipeSketchGenerator.h"
+#include "$Everglory/Include/Common_Utility.h"  
+#include "$Everglory/Include/String_Utility.h"
+#include "$Everglory/Include/Drawing_Utility.h"
+#include "$Everglory/Include/Grid_Utility.h"
+#include "$Everglory/Include/license.h"
 
 /*
 **脚本语言中似乎无法直接获得一个数组的实际长度，定义一个全局变量用于保存管段信息的数量
@@ -71,12 +71,12 @@ global	string	Proj_Number = "";
 global	string	Proj_ClassName = "";
 global	float		Bending_Radius = 0.0;
 
-global	string	Icon_My_Check_Out = "$GreenTec/ICONS/mycheckout.ico";
-global	string	Icon_Other_Check_Out = "$GreenTec/ICONS/checkout.ico";
-global	string	Icon_Local_Server = "$GreenTec/ICONS/local_server.ico";
-global	string	Icon_Replica_Check_Out = "$GreenTec/ICONS/replica_checkout.ico";
-global	string	Icon_Replica_Server = "$GreenTec/ICONS/replica.ico";
-global	string	Icon_Error = "$GreenTec/ICONS/error.ico";
+global	string	Icon_My_Check_Out = "$Everglory/ICONS/mycheckout.ico";
+global	string	Icon_Other_Check_Out = "$Everglory/ICONS/checkout.ico";
+global	string	Icon_Local_Server = "$Everglory/ICONS/local_server.ico";
+global	string	Icon_Replica_Check_Out = "$Everglory/ICONS/replica_checkout.ico";
+global	string	Icon_Replica_Server = "$Everglory/ICONS/replica.ico";
+global	string	Icon_Error = "$Everglory/ICONS/error.ico";
 global	handle	Access_List;
 
 /*
@@ -3373,7 +3373,7 @@ get_mto_table()
 			/*零件数量*/
 			put_2darray(temp_mto,mto_number-1,1,"1");
 			/*零件单位*/
-			put_2darray(temp_mto,mto_number-1,2,"Piece");
+			put_2darray(temp_mto,mto_number-1,2,"PCS");
 			/*零件描述*/
 			pipe = get_2darray(Spool_Parts,i,1);
 			nth_part = get_2darray(Spool_Parts,i,3);
@@ -3412,7 +3412,7 @@ get_mto_table()
 			/*零件数量*/
 			put_2darray(temp_mto,mto_number-1,1,"1");
 			/*零件单位*/
-			put_2darray(temp_mto,mto_number-1,2,"Piece");
+			put_2darray(temp_mto,mto_number-1,2,"PCS");
 			/*零件描述*/
 			description = get_doubleplate_description(doubleplate_handle);
 			put_2darray(temp_mto,mto_number-1,3,description);
@@ -3443,7 +3443,7 @@ get_mto_table()
 			/*零件数量*/
 			put_2darray(temp_mto,mto_number-1,1,"1");
 			/*零件单位*/
-			put_2darray(temp_mto,mto_number-1,2,"Piece");
+			put_2darray(temp_mto,mto_number-1,2,"PCS");
 			/*零件描述*/
 			description = get_part_description(penetration,0,type);
 			put_2darray(temp_mto,mto_number-1,3,description);
@@ -9901,9 +9901,9 @@ draw_connection_table()
 	DW_TSIZE(2);
 	DW_TATTR(0.0,0.0,4);
 	con1 = get_2darray(Connection_Table,0,4);
-	DW_TEXT(98, 26, con1);
+	DW_TEXT(95, 26, con1);
 	con2 = get_2darray(Connection_Table,1,4);
-	DW_TEXT(98, 20, con2);
+	DW_TEXT(95, 20, con2);
 	
 }
 
